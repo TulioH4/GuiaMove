@@ -229,7 +229,7 @@ Já existe outra cópia do programa (ou outro app) na porta 5000. Feche-a ou use
 
 ## Equipe
 
-Projeto desenvolvido no **Instituto Nacional de Telecomunicações (Inatel)** e apresentado na **FETIN**. Orientação: **Elisa Rennó**.
+Projeto desenvolvido no **Instituto Nacional de Telecomunicações (Inatel)** e apresentado na **FETIN**. Orientação: **Elisa Rennó C Dester**.
 
 | Integrante | Curso |
 |---|---|
