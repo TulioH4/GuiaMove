@@ -4,36 +4,50 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>GuiaMove — exercício guiado por voz</title>
-<meta name="description" content="GuiaMove é um coach de exercícios para pessoas cegas ou com baixa visão: uma câmera acompanha o corpo e o sistema fala o que corrigir.">
-<meta name="theme-color" content="#06101C">
+<meta name="description" content="GuiaMove é um coach de exercícios para pessoas cegas ou com baixa visão: a câmera acompanha o corpo e a voz diz o que corrigir. Projeto do Inatel apresentado na FETIN.">
+<meta name="theme-color" content="#0061AE">
+<link rel="icon" href="assets/logo-icon.svg" type="image/svg+xml">
 <meta property="og:type" content="website">
 <meta property="og:title" content="GuiaMove — exercício guiado por voz">
-<meta property="og:description" content="Um coach de exercícios para pessoas cegas ou com baixa visão: a câmera acompanha o corpo e a voz diz o que corrigir.">
+<meta property="og:description" content="O coach de exercícios que enxerga por você: a câmera acompanha o corpo e a voz diz o que corrigir.">
 <meta property="og:url" content="https://tulioh4.github.io/GuiaMove/">
+<meta property="og:image" content="https://tulioh4.github.io/GuiaMove/assets/og.png">
+<meta property="og:image:alt" content="Logo do GuiaMove">
+<meta name="twitter:card" content="summary_large_image">
 <style>
   :root {
-    color-scheme: dark light;
-    --bg: #06101C;
-    --card: #0C1D2C;
-    --ink: #F1F8F7;
-    --muted: #AFC3D1;
-    --line: #21404F;
-    --accent: #2DD4BF;
-    --on-accent: #06101C;
-    --warn: #FBBF24;
-    --ring: #2DD4BF;
+    color-scheme: light dark;
+    --bg: #FFFFFF;
+    --soft: #F2F8FD;
+    --card: #FFFFFF;
+    --line: #D2E4F2;
+    --ink: #26333F;
+    --muted: #4F6377;
+    --brand: #0061AE;
+    --brand-hover: #004F8E;
+    --on-brand: #FFFFFF;
+    --sky: #1BAEEE;
+    --focus: #04537F;
+    --foot-bg: #04537F;
+    --foot-ink: #FFFFFF;
+    --foot-muted: #BFE3F9;
   }
-  @media (prefers-color-scheme: light) {
+  @media (prefers-color-scheme: dark) {
     :root {
-      --bg: #F3F9F8;
-      --card: #FFFFFF;
-      --ink: #0B1B2B;
-      --muted: #41546A;
-      --line: #C6D4DC;
-      --accent: #0E6F66;
-      --on-accent: #FFFFFF;
-      --warn: #8A5300;
-      --ring: #0E6F66;
+      --bg: #071A2B;
+      --soft: #0A2033;
+      --card: #0E2740;
+      --line: #1F3F5D;
+      --ink: #EAF4FC;
+      --muted: #A7C2D9;
+      --brand: #48B3F0;
+      --brand-hover: #72C6F5;
+      --on-brand: #04213A;
+      --sky: #1BAEEE;
+      --focus: #8CCBF2;
+      --foot-bg: #0A2033;
+      --foot-ink: #EAF4FC;
+      --foot-muted: #A7C2D9;
     }
   }
   * { box-sizing: border-box; }
@@ -44,66 +58,79 @@
     font: 1.0625rem/1.6 system-ui, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
   }
   .wrap { width: min(100% - 2rem, 62rem); margin-inline: auto; }
-  a { color: var(--accent); text-underline-offset: .2em; }
-  :focus-visible { outline: 3px solid var(--warn); outline-offset: 3px; border-radius: .25rem; }
+  a { color: var(--brand); text-underline-offset: .2em; }
+  :focus-visible { outline: 3px solid var(--focus); outline-offset: 3px; border-radius: .25rem; }
+  img { max-width: 100%; height: auto; }
 
-  .skip { position: absolute; left: 1rem; top: -4rem; background: var(--warn); color: #06101C; padding: .75rem 1rem; border-radius: .5rem; font-weight: 700; z-index: 10; }
+  .skip { position: absolute; left: 1rem; top: -4rem; background: var(--brand); color: var(--on-brand); padding: .75rem 1rem; border-radius: .5rem; font-weight: 700; z-index: 10; }
   .skip:focus { top: 1rem; }
 
-  header.top .wrap { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: .5rem 1.5rem; padding-block: 1rem; }
-  .brand { font-weight: 800; font-size: 1.35rem; letter-spacing: -.02em; color: var(--ink); text-decoration: none; }
-  .brand span { color: var(--accent); }
-  nav ul { display: flex; flex-wrap: wrap; gap: .25rem 1.25rem; list-style: none; margin: 0; padding: 0; }
-  nav a { display: inline-block; padding: .5rem 0; color: var(--ink); font-weight: 600; text-decoration: none; }
-  nav a:hover { color: var(--accent); text-decoration: underline; }
+  header.top { border-bottom: 1px solid var(--line); }
+  header.top .wrap { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: .25rem 1.5rem; padding-block: .9rem; }
+  .brand { display: inline-flex; align-items: center; }
+  .brand img { display: block; height: 1.9rem; width: auto; }
+  nav ul { display: flex; flex-wrap: wrap; gap: .1rem 1.25rem; list-style: none; margin: 0; padding: 0; }
+  nav a { display: inline-block; padding: .55rem 0; color: var(--ink); font-weight: 600; text-decoration: none; }
+  nav a:hover { color: var(--brand); text-decoration: underline; }
 
-  h1, h2, h3 { line-height: 1.15; letter-spacing: -.02em; text-wrap: balance; }
-  h1 { font-size: clamp(2.1rem, 8vw, 3.6rem); font-weight: 800; margin: .4rem 0 1rem; }
-  h2 { font-size: clamp(1.6rem, 5vw, 2.2rem); font-weight: 800; margin: 0 0 1rem; }
-  h3 { font-size: 1.2rem; margin: 0 0 .4rem; }
+  h1, h2, h3 { line-height: 1.15; letter-spacing: -.02em; text-wrap: balance; margin: 0; }
+  h1 { font-size: clamp(2.1rem, 8vw, 3.5rem); font-weight: 800; margin-bottom: 1rem; }
+  h1 span { color: var(--brand); }
+  h2 { font-size: clamp(1.6rem, 5vw, 2.2rem); font-weight: 800; margin-bottom: 1rem; }
+  h3 { font-size: 1.2rem; margin-bottom: .35rem; }
   p { margin: 0 0 1rem; max-width: 42rem; }
-  .eyebrow { font-size: .8rem; font-weight: 700; letter-spacing: .16em; text-transform: uppercase; color: var(--accent); margin: 0; }
+  .eyebrow { font-size: .8rem; font-weight: 700; letter-spacing: .16em; text-transform: uppercase; color: var(--brand); margin: 0 0 .5rem; }
   .lead { font-size: 1.2rem; color: var(--muted); }
 
-  .hero { padding-block: clamp(1.5rem, 6vw, 4rem); }
+  .hero { padding-block: clamp(1.75rem, 6vw, 4rem); background: linear-gradient(180deg, var(--soft), var(--bg)); }
   .hero .wrap { display: grid; gap: 2rem; align-items: center; }
-  .hero-art { width: min(100%, 22rem); margin-inline: auto; }
-  .hero-art svg { display: block; width: 100%; height: auto; }
-  @media (min-width: 52rem) {
-    .hero .wrap { grid-template-columns: 1.15fr .85fr; }
-  }
+  .hero-art { width: min(100%, 20rem); margin-inline: auto; }
+  .hero-art img { display: block; width: 100%; }
+  @media (min-width: 52rem) { .hero .wrap { grid-template-columns: 1.15fr .85fr; } .hero-art { width: min(100%, 26rem); } }
   .actions { display: flex; flex-wrap: wrap; gap: .75rem; margin-top: 1.5rem; }
-  .btn { display: inline-flex; align-items: center; min-height: 3rem; padding: 0 1.4rem; border-radius: .8rem; font-weight: 700; text-decoration: none; border: 2px solid var(--accent); }
-  .btn.primary { background: var(--accent); color: var(--on-accent); }
-  .btn.ghost { color: var(--ink); }
-  .btn:hover { filter: brightness(1.08); }
+  .btn { display: inline-flex; align-items: center; min-height: 3rem; padding: 0 1.4rem; border-radius: .8rem; font-weight: 700; text-decoration: none; border: 2px solid var(--brand); }
+  .btn.primary { background: var(--brand); color: var(--on-brand); }
+  .btn.primary:hover { background: var(--brand-hover); border-color: var(--brand-hover); }
+  .btn.ghost { color: var(--brand); background: transparent; }
+  .btn.ghost:hover { background: var(--soft); }
 
-  section.block { padding-block: clamp(2rem, 6vw, 3.5rem); border-top: 1px solid var(--line); scroll-margin-top: 1rem; }
+  section.block { padding-block: clamp(2rem, 6vw, 3.5rem); scroll-margin-top: 1rem; }
+  section.block.soft { background: var(--soft); }
 
-  ol.steps { list-style: none; counter-reset: passo; margin: 1.5rem 0 0; padding: 0; display: grid; gap: 1rem; }
+  ol.steps { list-style: none; counter-reset: passo; margin: 1.5rem 0 0; padding: 0; display: grid; gap: 1.1rem; }
   ol.steps li { counter-increment: passo; display: grid; grid-template-columns: 3rem 1fr; gap: 1rem; align-items: start; }
   ol.steps li::before {
     content: counter(passo); display: grid; place-items: center; width: 3rem; height: 3rem; border-radius: 50%;
-    background: var(--accent); color: var(--on-accent); font-weight: 800; font-size: 1.25rem;
+    background: var(--brand); color: var(--on-brand); font-weight: 800; font-size: 1.25rem;
   }
   ol.steps p { margin: 0; color: var(--muted); }
+  @media (min-width: 46rem) { ol.steps.row { grid-template-columns: repeat(3, 1fr); } ol.steps.row li { grid-template-columns: 1fr; } }
 
   .cards { display: grid; gap: 1rem; margin-top: 1.5rem; }
   @media (min-width: 46rem) { .cards.three { grid-template-columns: repeat(3, 1fr); } .cards.two { grid-template-columns: repeat(2, 1fr); } }
-  .card { background: var(--card); border: 1px solid var(--line); border-radius: 1rem; padding: 1.25rem; }
+  .card { background: var(--card); border: 1px solid var(--line); border-top: 4px solid var(--sky); border-radius: 1rem; padding: 1.25rem; }
   .card p { margin: 0; color: var(--muted); }
   .card ul { margin: .5rem 0 0; padding-left: 1.2rem; color: var(--muted); }
-  .tag { display: inline-block; margin-top: .75rem; font-size: .85rem; font-weight: 700; color: var(--warn); }
+  .tag { display: inline-block; margin-top: .75rem; font-size: .85rem; font-weight: 700; color: var(--brand); }
 
   ul.chips { display: flex; flex-wrap: wrap; gap: .6rem; list-style: none; margin: 1.25rem 0 0; padding: 0; }
   ul.chips li { border: 1.5px solid var(--line); background: var(--card); border-radius: 999px; padding: .35rem .95rem; font-weight: 600; }
-  ul.chips li.strong { border-color: var(--warn); }
+  ul.chips li.strong { border-color: var(--brand); color: var(--brand); }
   .note { color: var(--muted); font-size: .95rem; margin-top: 1rem; }
 
-  .placeholder { background: color-mix(in srgb, var(--warn) 22%, transparent); border-radius: .3rem; padding: 0 .3rem; }
+  ul.team { list-style: none; margin: 1.5rem 0 0; padding: 0; display: grid; gap: .9rem; }
+  @media (min-width: 40rem) { ul.team { grid-template-columns: repeat(2, 1fr); } }
+  ul.team li { background: var(--card); border: 1px solid var(--line); border-left: 5px solid var(--brand); border-radius: .9rem; padding: .9rem 1.1rem; }
+  ul.team strong { display: block; font-size: 1.05rem; }
+  ul.team span { color: var(--muted); font-size: .95rem; }
+  .inst { display: flex; flex-wrap: wrap; align-items: center; gap: .6rem; margin-bottom: .75rem; }
+  .pill { display: inline-block; border: 2px solid var(--brand); color: var(--brand); border-radius: 999px; padding: .1rem .8rem; font-weight: 800; letter-spacing: .08em; font-size: .9rem; }
 
-  footer { border-top: 1px solid var(--line); padding-block: 2rem 3rem; color: var(--muted); font-size: .95rem; }
-  footer p { margin: 0 0 .5rem; }
+  footer { background: var(--foot-bg); color: var(--foot-ink); padding-block: 2rem 3rem; font-size: .95rem; }
+  footer p { margin: 0 0 .4rem; }
+  footer .name { font-weight: 800; font-size: 1.2rem; letter-spacing: -.01em; }
+  footer a { color: var(--foot-ink); }
+  footer .muted { color: var(--foot-muted); }
 </style>
 </head>
 <body>
@@ -111,9 +138,15 @@
 
 <header class="top">
   <div class="wrap">
-    <a class="brand" href="#topo" id="topo">Guia<span>Move</span></a>
+    <a class="brand" href="#topo" id="topo">
+      <picture>
+        <source media="(prefers-color-scheme: dark)" srcset="assets/logo-wordmark-dark.svg">
+        <img src="assets/logo-wordmark.svg" alt="GuiaMove" width="140" height="25">
+      </picture>
+    </a>
     <nav aria-label="Seções da página">
       <ul>
+        <li><a href="#experimente">Experimente</a></li>
         <li><a href="#como">Como funciona</a></li>
         <li><a href="#exercicios">Exercícios</a></li>
         <li><a href="#voz">Voz</a></li>
@@ -128,47 +161,50 @@
     <div class="wrap">
       <div>
         <p class="eyebrow">Exercício guiado por voz</p>
-        <h1>O coach de exercícios que enxerga por você.</h1>
+        <h1>O coach de exercícios <span>que enxerga por você.</span></h1>
         <p class="lead">O GuiaMove foi feito para pessoas cegas ou com baixa visão. Uma câmera acompanha o corpo e o sistema <strong>fala</strong> o que corrigir, sem que ninguém precise olhar para tela nenhuma.</p>
         <div class="actions">
-          <a class="btn primary" href="#como">Como funciona</a>
+          <a class="btn primary" href="#experimente">Experimente agora</a>
           <a class="btn ghost" href="https://github.com/TulioH4/GuiaMove">Ver o código no GitHub</a>
         </div>
       </div>
       <div class="hero-art">
-        <svg viewBox="0 0 300 270" role="img" aria-labelledby="art-t">
-          <title id="art-t">Ilustração: um esqueleto de perfil faz um agachamento enquanto ondas de som saem da cabeça.</title>
-          <defs>
-            <radialGradient id="art-fade" gradientUnits="userSpaceOnUse" cx="159" cy="41" r="178">
-              <stop offset=".45" stop-color="#fff"/><stop offset="1" stop-color="#000"/>
-            </radialGradient>
-            <mask id="art-mask" maskUnits="userSpaceOnUse" x="-200" y="-200" width="700" height="700">
-              <rect x="-200" y="-200" width="700" height="700" fill="url(#art-fade)"/>
-            </mask>
-          </defs>
-          <g fill="none" stroke="var(--ring)" stroke-width="2.5" mask="url(#art-mask)">
-            <circle cx="159" cy="41" r="34" opacity=".55"/>
-            <circle cx="159" cy="41" r="64" opacity=".38"/>
-            <circle cx="159" cy="41" r="98" opacity=".26"/>
-            <circle cx="159" cy="41" r="136" opacity=".17"/>
-            <circle cx="159" cy="41" r="178" opacity=".10"/>
-          </g>
-          <g fill="none" stroke="var(--accent)" stroke-width="9" stroke-linecap="round" stroke-linejoin="round">
-            <polyline points="190,246 151,178.5 232.4,161.2 172.7,76 166.2,59"/>
-            <polyline points="172.7,76 120.9,80.5 71.7,84.8"/>
-          </g>
-          <g fill="var(--bg)" stroke="var(--ink)" stroke-width="3">
-            <circle cx="190" cy="246" r="9"/><circle cx="232.4" cy="161.2" r="9"/><circle cx="172.7" cy="76" r="9"/>
-            <circle cx="120.9" cy="80.5" r="7"/><circle cx="71.7" cy="84.8" r="6.5"/>
-          </g>
-          <circle cx="151" cy="178.5" r="9" fill="var(--bg)" stroke="var(--warn)" stroke-width="4"/>
-          <circle cx="159.2" cy="40.8" r="19.5" fill="var(--bg)" stroke="var(--accent)" stroke-width="7"/>
-        </svg>
+        <picture>
+          <source media="(prefers-color-scheme: dark)" srcset="assets/logo-icon-dark.svg">
+          <img src="assets/logo-icon.svg" alt="Ícone do GuiaMove: uma pessoa em movimento cercada por ondas de som." width="420" height="305">
+        </picture>
       </div>
     </div>
   </section>
 
-  <section class="block" id="como">
+  <section class="block" id="experimente">
+    <div class="wrap">
+      <h2>Experimente na FETIN</h2>
+      <p>É só ficar de pé diante do Kinect e falar.</p>
+      <ol class="steps row">
+        <li>
+          <div>
+            <h3>Fique de frente para o Kinect</h3>
+            <p>Corpo inteiro no quadro, da cabeça aos pés. O sistema avisa se algo estiver cortado.</p>
+          </div>
+        </li>
+        <li>
+          <div>
+            <h3>Diga “iniciar”</h3>
+            <p>Ele confere o enquadramento, explica o exercício e começa.</p>
+          </div>
+        </li>
+        <li>
+          <div>
+            <h3>Agache e ouça as correções</h3>
+            <p>A voz avisa na hora se o joelho ou o tronco saírem do lugar, e conta as repetições.</p>
+          </div>
+        </li>
+      </ol>
+    </div>
+  </section>
+
+  <section class="block soft" id="como">
     <div class="wrap">
       <h2>Como funciona</h2>
       <p>Sem sensores no corpo, sem Arduino, sem equipamento especial de academia. Só uma câmera, um computador e a voz.</p>
@@ -230,7 +266,7 @@
     </div>
   </section>
 
-  <section class="block" id="voz">
+  <section class="block soft" id="voz">
     <div class="wrap">
       <h2>Tudo pela voz</h2>
       <p>Quem se exercita comanda o sistema falando, sem tocar em botão nenhum.</p>
@@ -265,20 +301,20 @@
     </div>
   </section>
 
-  <section class="block" id="equipe">
+  <section class="block soft" id="equipe">
     <div class="wrap">
       <h2>Equipe</h2>
-      <!-- PREENCHER antes de publicar: nomes, instituição, curso e orientador. Apague o que não usar. -->
-      <div class="cards two">
-        <div class="card">
-          <h3>Autores</h3>
-          <p><span class="placeholder">[PREENCHER: nomes da equipe]</span></p>
-        </div>
-        <div class="card">
-          <h3>Instituição</h3>
-          <p><span class="placeholder">[PREENCHER: instituição, curso e orientador]</span></p>
-        </div>
+      <div class="inst">
+        <span class="pill">FETIN</span>
+        <span>Instituto Nacional de Telecomunicações (Inatel)</span>
       </div>
+      <p>Orientação: <strong>Elisa Rennó</strong></p>
+      <ul class="team">
+        <li><strong>Túlio Henrique Gonçalves Simões</strong><span>Engenharia de Produção</span></li>
+        <li><strong>André Soares Barbosa</strong><span>Engenharia de Computação</span></li>
+        <li><strong>João Paulo Rangel Fernandes</strong><span>Engenharia de Automação</span></li>
+        <li><strong>João Vitor Lima da Silveira</strong><span>Engenharia de Software</span></li>
+      </ul>
       <p class="note">O código é aberto: <a href="https://github.com/TulioH4/GuiaMove">github.com/TulioH4/GuiaMove</a>.</p>
     </div>
   </section>
@@ -286,8 +322,9 @@
 
 <footer>
   <div class="wrap">
-    <p><strong>GuiaMove</strong> · feito para que ninguém precise enxergar a tela para se exercitar com segurança.</p>
-    <p>Esta página não usa cookies nem rastreadores.</p>
+    <p class="name">GuiaMove</p>
+    <p>Feito para que ninguém precise enxergar a tela para se exercitar com segurança.</p>
+    <p class="muted">Instituto Nacional de Telecomunicações · FETIN. Esta página não usa cookies nem rastreadores.</p>
   </div>
 </footer>
 </body>

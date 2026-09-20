@@ -1,54 +1,65 @@
 <p align="center">
-  <img src="assets/banner.svg" alt="GuiaMove — o coach de exercícios que enxerga por você. Um esqueleto de perfil faz agachamentos enquanto ondas de voz saem da cabeça." width="100%">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="assets/logo-dark.svg">
+    <img src="assets/logo.svg" alt="GuiaMove" width="380">
+  </picture>
+</p>
+
+<h3 align="center">O coach de exercícios que enxerga por você.</h3>
+
+<p align="center">
+  Exercício guiado por voz para pessoas cegas ou com baixa visão.<br>
+  Projeto do Instituto Nacional de Telecomunicações, apresentado na FETIN.
 </p>
 
 <p align="center">
-  <img alt="Python 3.14" src="https://img.shields.io/badge/Python-3.14-3776AB?style=flat-square&logo=python&logoColor=white">
-  <img alt="MediaPipe Pose" src="https://img.shields.io/badge/MediaPipe-Pose-0097A7?style=flat-square">
-  <img alt="Kinect v1" src="https://img.shields.io/badge/Kinect-v1-107C10?style=flat-square">
-  <img alt="Flask + Socket.IO" src="https://img.shields.io/badge/Flask-Socket.IO-000000?style=flat-square&logo=flask&logoColor=white">
-  <img alt="three.js" src="https://img.shields.io/badge/three.js-avatar_3D-000000?style=flat-square&logo=threedotjs&logoColor=white">
-  <img alt="Windows 11" src="https://img.shields.io/badge/Windows-11-0078D4?style=flat-square">
+  <img alt="Python 3.14" src="https://img.shields.io/badge/Python-3.14-0061AE?style=flat-square&labelColor=343E47&logo=python&logoColor=white">
+  <img alt="MediaPipe Pose" src="https://img.shields.io/badge/MediaPipe-Pose-0061AE?style=flat-square&labelColor=343E47">
+  <img alt="Kinect v1" src="https://img.shields.io/badge/Kinect-v1-0061AE?style=flat-square&labelColor=343E47">
+  <img alt="Flask + Socket.IO" src="https://img.shields.io/badge/Flask-Socket.IO-0061AE?style=flat-square&labelColor=343E47&logo=flask&logoColor=white">
+  <img alt="three.js" src="https://img.shields.io/badge/three.js-avatar_3D-0061AE?style=flat-square&labelColor=343E47&logo=threedotjs&logoColor=white">
+  <img alt="Windows 11" src="https://img.shields.io/badge/Windows-11-0061AE?style=flat-square&labelColor=343E47">
 </p>
 
 <p align="center">
-  <img src="assets/countdown.svg" alt="Contador de dias até a banca" width="480">
-</p>
-
-<p align="center">
-  <a href="#-o-que-é">O que é</a> ·
-  <a href="#-como-funciona">Como funciona</a> ·
-  <a href="#-exercícios">Exercícios</a> ·
-  <a href="#-início-rápido">Início rápido</a> ·
-  <a href="#-controle-por-voz">Voz</a> ·
-  <a href="#-estrutura-do-projeto">Estrutura</a> ·
-  <a href="#-solução-de-problemas">Problemas?</a> ·
+  <a href="#o-que-é">O que é</a> ·
+  <a href="#como-funciona">Como funciona</a> ·
+  <a href="#exercícios">Exercícios</a> ·
+  <a href="#início-rápido">Início rápido</a> ·
+  <a href="#controle-por-voz">Voz</a> ·
+  <a href="#estrutura-do-projeto">Estrutura</a> ·
+  <a href="#solução-de-problemas">Problemas?</a> ·
+  <a href="#equipe">Equipe</a> ·
   <a href="https://tulioh4.github.io/GuiaMove/">Página do projeto</a>
 </p>
 
 ---
 
-## 🦾 O que é
+## O que é
 
 **GuiaMove** (chamado de *SeeMove* no código e nos atalhos) é um coach de exercícios pensado para **pessoas cegas ou com baixa visão**. Uma câmera (Kinect v1 ou webcam) acompanha o corpo, o **MediaPipe Pose** localiza as articulações e o sistema **fala** o que corrigir, como "joelho esquerdo para dentro" ou "tronco inclinado para a direita", sem que a pessoa precise olhar para tela nenhuma.
 
-- 🎙️ **Guiado por voz:** o sistema explica o exercício, corrige a postura e conta as repetições em voz alta; dá para controlar tudo falando.
-- 🧍 **Sem nada no corpo:** sem sensores de pressão, Wii Balance Board ou Arduino. Só uma câmera.
-- 🖥️ **Painel para quem acompanha:** dashboard no navegador com o vídeo, um **boneco 3D** que espelha o movimento, indicadores de desvio postural e o histórico do que foi falado.
-- 📄 **Relatório da sessão** em CSV, para acompanhar a evolução.
+- **Guiado por voz:** o sistema explica o exercício, corrige a postura e conta as repetições em voz alta; dá para controlar tudo falando.
+- **Sem nada no corpo:** sem sensores de pressão, Wii Balance Board ou Arduino. Só uma câmera.
+- **Painel para quem acompanha:** dashboard no navegador com o vídeo, um **boneco 3D** que espelha o movimento, indicadores de desvio postural e o histórico do que foi falado.
+- **Relatório da sessão** em CSV, para acompanhar a evolução.
 
-## 🧠 Como funciona
+## Como funciona
 
 ```mermaid
 flowchart LR
-    K["🎥 Kinect v1 ou webcam"] --> C["Captura<br/>~30 fps"]
+    K["Kinect v1<br/>ou webcam"] --> C["Captura<br/>~30 fps"]
     C --> M["MediaPipe Pose<br/>33 pontos do corpo"]
     M --> F["Filtro One Euro<br/>suaviza o tremido"]
     F --> A["Análise do exercício<br/>~10 vezes por segundo"]
-    F --> D["Dashboard 3D<br/>Socket.IO"]
-    A --> V["🔊 Voz"]
-    A --> B["🔔 Bipes"]
+    F --> D["Painel 3D<br/>Socket.IO"]
+    A --> V["Voz"]
+    A --> B["Bipes"]
     A --> D
+    classDef entrada fill:#E4F2FC,stroke:#0061AE,stroke-width:1.5px,color:#0B2A44
+    classDef saida fill:#0061AE,stroke:#04537F,stroke-width:1.5px,color:#FFFFFF
+    class K,C,M,F entrada
+    class A,D,V,B saida
 ```
 
 1. **Captura:** o Kinect entrega a imagem por uma ponte nativa (C++ → memória compartilhada); uma webcam comum entra pelo OpenCV.
@@ -57,9 +68,9 @@ flowchart LR
 4. **Análise:** cada exercício roda suas checagens e o **problema mais grave vence**. No agachamento, uma correção só é falada depois de se repetir por alguns quadros seguidos, para não gerar alarme falso.
 5. **Feedback:** voz (no navegador ou no motor local), bipes e o painel, sempre coordenados para uma fala nunca cortar a outra.
 
-Na primeira vez que um exercício é iniciado depois de abrir o programa, há uma **calibração de enquadramento** falada: o sistema avisa se falta luz, se a cabeça ou os pés estão cortados ou se a pessoa precisa andar para o lado, e só começa quando o enquadramento fica estável. Para calibrar de novo (outra pessoa ou outro lugar), use o botão **🎯 Iniciar configuração** do painel.
+Na primeira vez que um exercício é iniciado depois de abrir o programa, há uma **calibração de enquadramento** falada: o sistema avisa se falta luz, se a cabeça ou os pés estão cortados ou se a pessoa precisa andar para o lado, e só começa quando o enquadramento fica estável. Para calibrar de novo (outra pessoa ou outro lugar), use o botão **Iniciar configuração** do painel.
 
-## 💪 Exercícios
+## Exercícios
 
 | Exercício | O que avalia | Extra |
 |---|---|---|
@@ -67,14 +78,14 @@ Na primeira vez que um exercício é iniciado depois de abrir o programa, há um
 | **Postura estática** (`stand`) | simetria de ombros e quadril, inclinação do tronco | avaliação em pé, sem contagem |
 | **Equilíbrio unipodial** (`balance`) | elevação da perna, oscilação do tronco, queda do quadril (Trendelenburg) | avisa risco de queda |
 
-## 🚀 Início rápido
+## Início rápido
 
 ### Requisitos
 
 - **Windows** (a ponte do Kinect só existe para ele; testado no Windows 11)
 - **Python 3.14** (versão em que foi testado)
 - Uma câmera: **Kinect v1** ou uma webcam
-- Navegador **Chrome ou Edge**. O controle por voz usa o reconhecimento de fala deles.
+- Navegador **Chrome ou Edge**, com internet. O controle por voz usa o reconhecimento de fala deles, que normalmente depende da rede.
 
 ### Instalar
 
@@ -82,7 +93,7 @@ Na primeira vez que um exercício é iniciado depois de abrir o programa, há um
 pip install -r requirements.txt
 ```
 
-O modelo `pose_landmarker.task` (~6 MB) é baixado sozinho na primeira execução, se não estiver em `core/`.
+O modelo `pose_landmarker.task` (~6 MB) já vem em `core/`; se faltar, é baixado sozinho na primeira execução.
 
 ### Rodar
 
@@ -102,7 +113,7 @@ O Kinect v1 **não aparece como webcam comum** no Windows. Por isso o projeto te
 2. Se `kinect_color_bridge.exe` não existir, compile-o com `native/kinect_bridge/build.bat` (precisa do *Visual Studio Build Tools 2022* com o workload de C++).
 3. Rode `python main.py --kinect-sdk`. Se o Kinect ficar entre **1,5 m e 2,5 m** da pessoa, acrescente `--kinect-sdk-depth` para usar a profundidade real. É o que o `Iniciar_SeeMove.bat` faz. Fora dessa faixa a profundidade fica instável e é melhor deixá-la desligada.
 
-> [!TIP]
+> [!NOTE]
 > **Ilumine o ambiente.** Em sala escura o Kinect entrega a cor totalmente preta (o infravermelho continua funcionando, mas o MediaPipe precisa da imagem colorida). O sistema percebe e avisa em voz alta: "A imagem da câmera está escura demais".
 
 ### Opções de linha de comando
@@ -125,9 +136,9 @@ O Kinect v1 **não aparece como webcam comum** no Windows. Por isso o projeto te
 
 `python main.py --help` lista todas.
 
-## 📢 Controle por voz
+## Controle por voz
 
-Clique em **🎙 Controle por voz** no cabeçalho do painel e permita o microfone. Depois é só falar:
+Clique em **Controle por voz** no cabeçalho do painel e permita o microfone. Depois é só falar:
 
 | Diga | Efeito |
 |---|---|
@@ -141,13 +152,15 @@ Clique em **🎙 Controle por voz** no cabeçalho do painel e permita o microfon
 
 O sistema ignora o eco da própria voz, e frases longas nunca contam como comando.
 
-## 📁 Estrutura do projeto
+## Estrutura do projeto
 
 ```text
 .
 ├── main.py                       ponto de entrada (linha de comando)
 ├── Iniciar_SeeMove.bat           atalho: Kinect + profundidade
 ├── Iniciar_SeeMove_Webcam.bat    atalho: webcam
+├── index.html                    página de resumo do projeto (a do QR code)
+├── assets/                       logo oficial (vetorial e originais) usada no README e na página
 ├── core/
 │   ├── kinect_tracker.py         captura, MediaPipe, suavização e desenho do esqueleto
 │   ├── kinect_sdk_bridge.py      lê a ponte nativa do Kinect (memória compartilhada)
@@ -164,7 +177,7 @@ O sistema ignora o eco da própria voz, e frases longas nunca contam como comand
 └── tools/                        gerador de placa em braile para impressão 3D
 ```
 
-## 🩺 Solução de problemas
+## Solução de problemas
 
 <details>
 <summary><b>O painel abre, mas sem imagem da câmera</b></summary>
@@ -191,7 +204,8 @@ Já existe outra cópia do programa (ou outro app) na porta 5000. Feche-a ou use
 <details>
 <summary><b>O controle por voz não escuta</b></summary>
 
-Use Chrome ou Edge, clique em **🎙 Controle por voz** e permita o microfone. Se o navegador não suportar reconhecimento de fala ou a permissão for negada, o sistema avisa em voz alta.
+- Use Chrome ou Edge, clique em **Controle por voz** e permita o microfone. Se a permissão for negada, o sistema avisa em voz alta.
+- Confira a internet: o reconhecimento de fala do navegador normalmente depende da rede. Sem ela, os comandos não são entendidos; os botões do painel continuam funcionando.
 </details>
 
 <details>
@@ -201,16 +215,30 @@ Use Chrome ou Edge, clique em **🎙 Controle por voz** e permita o microfone. S
 - Mostre o corpo inteiro, da cabeça aos pés, e evite ficar colado na câmera.
 </details>
 
-## 🧭 Limitações conhecidas e próximos passos
+## Limitações conhecidas e próximos passos
 
 **Hoje**
 - O boneco 3D não gira o tronco quando a pessoa vira de lado, e também não desloca o quadril nem inclina a cabeça.
 - O modelo do MediaPipe é o *lite*; `--complexity` é ignorado pela API atual.
 
 **Próximos passos**
-- 🔊 Um painel pensado **primeiro para leitor de tela**, para a própria pessoa cega usar sozinha, com navegação total por teclado.
-- 🎯 Enquadramento automático usando o motor de inclinação do Kinect.
-- 🧑‍🎤 Trocar o boneco procedural por um modelo 3D com esqueleto real.
+- Um painel pensado **primeiro para leitor de tela**, para a própria pessoa cega usar sozinha, com navegação total por teclado.
+- Enquadramento automático usando o motor de inclinação do Kinect.
+- Trocar o boneco procedural por um modelo 3D com esqueleto real.
+- Refazer a identidade visual do painel do aplicativo com o azul e o branco da logo oficial.
+
+## Equipe
+
+Projeto desenvolvido no **Instituto Nacional de Telecomunicações (Inatel)** e apresentado na **FETIN**. Orientação: **Elisa Rennó**.
+
+| Integrante | Curso |
+|---|---|
+| Túlio Henrique Gonçalves Simões | Engenharia de Produção |
+| André Soares Barbosa | Engenharia de Computação |
+| João Paulo Rangel Fernandes | Engenharia de Automação |
+| João Vitor Lima da Silveira | Engenharia de Software |
+
+A página de resumo usada no QR code do banner fica em [tulioh4.github.io/GuiaMove](https://tulioh4.github.io/GuiaMove/) (arquivo `index.html`).
 
 ---
 
