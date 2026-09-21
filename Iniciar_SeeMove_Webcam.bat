@@ -1,10 +1,10 @@
 @echo off
 setlocal
-title SeeMove (Webcam)
+title GuiaMove (Webcam)
 cd /d "%~dp0"
 
 echo ===============================================
-echo   SeeMove - Monitoramento postural (WEBCAM)
+echo   GuiaMove - Monitoramento postural (WEBCAM)
 echo ===============================================
 echo.
 echo   Iniciando com a webcam padrao (indice 0)... o painel abre
@@ -19,5 +19,5 @@ echo.
 python main.py --camera 0
 
 echo.
-echo   SeeMove foi encerrado.
+echo   GuiaMove foi encerrado.
 pause

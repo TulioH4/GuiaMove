@@ -14,6 +14,7 @@ from typing import Deque, List, Optional
 
 from core.skeleton import SkeletonFrame, SkeletonMetrics
 from exercises.base import FeedbackResult, Severity
+from reports._brand import LOGO_ICON, LOGO_WORDMARK
 
 
 @dataclass
@@ -242,45 +243,65 @@ class SessionReporter:
 <html lang="pt-BR">
 <head>
 <meta charset="UTF-8">
-<title>SeeMove — Relatório de Sessão</title>
+<title>GuiaMove — Relatório de Sessão</title>
 <style>
   *{{box-sizing:border-box;margin:0;padding:0}}
-  body{{font-family:'Segoe UI',Arial,sans-serif;background:#f5f7fa;color:#1a1d2e;padding:32px}}
-  .page{{max-width:820px;margin:0 auto;background:#fff;border-radius:12px;
-         box-shadow:0 2px 20px rgba(0,0,0,.08);overflow:hidden}}
-  .hdr{{background:#1D9E75;color:#fff;padding:28px 32px}}
-  .hdr h1{{font-size:22px;font-weight:700}}
-  .hdr p{{font-size:13px;opacity:.85;margin-top:4px}}
+  body{{font-family:'Segoe UI',Arial,sans-serif;background:#EEF4FA;color:#1B2733;padding:32px}}
+  .page{{max-width:820px;margin:0 auto;background:#fff;border-radius:16px;
+         box-shadow:0 1px 2px rgba(4,83,127,.06),0 18px 40px -20px rgba(4,83,127,.35);overflow:hidden}}
+  .bar{{height:5px;background:linear-gradient(90deg,#0061AE,#1BAEEE)}}
+  .hdr{{display:flex;align-items:center;justify-content:space-between;gap:20px;
+        padding:24px 32px 22px;border-bottom:1px solid #DAE6F1}}
+  .brand{{display:flex;align-items:center;gap:14px}}
+  .brand .bi{{height:58px;width:auto;display:block}}
+  .brand .bw{{height:24px;width:auto;display:block}}
+  .brand .tag{{font-size:11.5px;color:#4D6074;margin-top:7px;letter-spacing:.03em}}
+  .ttl{{text-align:right}}
+  .ttl h1{{font-size:11.5px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:#04537F}}
+  .ttl .e{{font-size:21px;font-weight:700;color:#1B2733;margin-top:4px}}
+  .ttl .d{{font-size:12.5px;color:#4D6074;margin-top:2px}}
   .body{{padding:28px 32px}}
-  h2{{font-size:13px;font-weight:600;text-transform:uppercase;letter-spacing:.05em;
-      color:#666;margin:24px 0 12px;border-bottom:1px solid #eee;padding-bottom:6px}}
+  h2{{font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;
+      color:#04537F;margin:24px 0 12px;border-bottom:1px solid #DAE6F1;padding-bottom:6px}}
   .grid3{{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-bottom:14px}}
   .grid2{{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px}}
-  .card{{background:#f5f7fa;border-radius:8px;padding:14px}}
-  .cl{{font-size:11px;color:#888;margin-bottom:5px}}
-  .cv{{font-size:24px;font-weight:700;color:#1D9E75}}
-  .cs{{font-size:11px;color:#aaa;margin-top:3px}}
+  .card{{background:#F2F7FC;border:1px solid #DAE6F1;border-radius:10px;padding:14px}}
+  .cl{{font-size:11px;color:#4D6074;margin-bottom:5px}}
+  .cv{{font-size:24px;font-weight:700;color:#0061AE}}
+  .cs{{font-size:11px;color:#5F7387;margin-top:3px}}
   .bar-row{{display:flex;align-items:center;gap:12px;margin-bottom:8px;font-size:13px}}
-  .bl{{width:90px;color:#555}}
-  .bt{{flex:1;height:14px;background:#e8eaf0;border-radius:7px;overflow:hidden}}
+  .bl{{width:90px;color:#4D6074}}
+  .bt{{flex:1;height:14px;background:#E3EDF7;border-radius:7px;overflow:hidden}}
   .bf{{height:100%;border-radius:7px}}
   .bv{{width:48px;text-align:right;font-weight:600}}
-  .ok{{background:#1D9E75}}.warn{{background:#f5a623}}.err{{background:#ff5c5c}}
-  .chart{{background:#f5f7fa;border-radius:8px;padding:16px;margin-bottom:16px}}
-  .info{{background:#f5f7fa;border-radius:8px;padding:14px;font-size:13px}}
-  .ir{{display:flex;justify-content:space-between;padding:5px 0;border-bottom:1px solid #eee}}
+  .ok{{background:#0061AE}}.warn{{background:#E8912A}}.err{{background:#E5484D}}
+  .chart{{background:#F2F7FC;border:1px solid #DAE6F1;border-radius:10px;padding:16px;margin-bottom:16px}}
+  .info{{background:#F2F7FC;border:1px solid #DAE6F1;border-radius:10px;padding:14px;font-size:13px}}
+  .ir{{display:flex;justify-content:space-between;padding:5px 0;border-bottom:1px solid #DAE6F1}}
   .ir:last-child{{border:none}}
-  .ik{{color:#666}}.iv{{font-weight:600}}
-  .ftr{{background:#f5f7fa;padding:14px 32px;font-size:12px;color:#aaa;
+  .ik{{color:#4D6074}}.iv{{font-weight:600}}
+  .ftr{{background:#F2F7FC;border-top:1px solid #DAE6F1;padding:14px 32px;font-size:12px;color:#5F7387;
         display:flex;justify-content:space-between}}
-  @media print{{body{{padding:0;background:#fff}}.page{{box-shadow:none;border-radius:0}}}}
+  @media print{{*{{-webkit-print-color-adjust:exact;print-color-adjust:exact}}
+                body{{padding:0;background:#fff}}.page{{box-shadow:none;border-radius:0}}}}
 </style>
 </head>
 <body>
 <div class="page">
+  <div class="bar"></div>
   <div class="hdr">
-    <h1>🦴 SeeMove — Relatório de Sessão</h1>
-    <p>{self._exercise_name} &nbsp;·&nbsp; {now_str}</p>
+    <div class="brand">
+      <img class="bi" src="{LOGO_ICON}" alt="">
+      <div>
+        <img class="bw" src="{LOGO_WORDMARK}" alt="GuiaMove">
+        <div class="tag">Monitoramento Postural</div>
+      </div>
+    </div>
+    <div class="ttl">
+      <h1>Relatório de Sessão</h1>
+      <div class="e">{self._exercise_name}</div>
+      <div class="d">{now_str}</div>
+    </div>
   </div>
   <div class="body">
 
@@ -291,7 +312,7 @@ class SessionReporter:
       <div class="card"><div class="cl">Postura correta</div>
         <div class="cv">{s['ok_pct']}%</div><div class="cs">do tempo</div></div>
       <div class="card"><div class="cl">Correções necessárias</div>
-        <div class="cv" style="color:#f5a623">{s['corrections']}</div>
+        <div class="cv" style="color:#B45309">{s['corrections']}</div>
         <div class="cs">eventos de desvio</div></div>
     </div>
     <div class="grid3">
@@ -307,10 +328,10 @@ class SessionReporter:
     <h2>Confiança de detecção ao longo do tempo</h2>
     <div class="chart">
       <svg width="100%" viewBox="0 0 300 60" preserveAspectRatio="none" style="height:70px">
-        <line x1="0" y1="30" x2="300" y2="30" stroke="#e0e0e0" stroke-width="1"/>
-        <polyline points="{polyline}" fill="none" stroke="#1D9E75" stroke-width="2"/>
+        <line x1="0" y1="30" x2="300" y2="30" stroke="#C4D6E7" stroke-width="1"/>
+        <polyline points="{polyline}" fill="none" stroke="#0061AE" stroke-width="2"/>
       </svg>
-      <div style="display:flex;justify-content:space-between;font-size:11px;color:#aaa;margin-top:4px">
+      <div style="display:flex;justify-content:space-between;font-size:11px;color:#5F7387;margin-top:4px">
         <span>Início</span><span>← tempo →</span><span>Fim</span>
       </div>
     </div>
@@ -320,17 +341,17 @@ class SessionReporter:
       <div class="bar-row">
         <span class="bl">Correto</span>
         <div class="bt"><div class="bf ok" style="width:{ok_pct}%"></div></div>
-        <span class="bv" style="color:#1D9E75">{ok_pct}%</span>
+        <span class="bv" style="color:#0061AE">{ok_pct}%</span>
       </div>
       <div class="bar-row">
         <span class="bl">Atenção</span>
         <div class="bt"><div class="bf warn" style="width:{warn_pct}%"></div></div>
-        <span class="bv" style="color:#f5a623">{warn_pct}%</span>
+        <span class="bv" style="color:#B45309">{warn_pct}%</span>
       </div>
       <div class="bar-row">
         <span class="bl">Crítico</span>
         <div class="bt"><div class="bf err" style="width:{err_pct}%"></div></div>
-        <span class="bv" style="color:#ff5c5c">{err_pct}%</span>
+        <span class="bv" style="color:#C62828">{err_pct}%</span>
       </div>
     </div>
 
@@ -356,7 +377,7 @@ class SessionReporter:
 
   </div>
   <div class="ftr">
-    <span>SeeMove — Kinect + MediaPipe</span>
+    <span>GuiaMove — Kinect + MediaPipe</span>
     <span>{now_str}</span>
   </div>
 </div>

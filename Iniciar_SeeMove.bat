@@ -1,10 +1,10 @@
 @echo off
 setlocal
-title SeeMove
+title GuiaMove
 cd /d "%~dp0"
 
 echo ===============================================
-echo   SeeMove - Monitoramento postural
+echo   GuiaMove - Monitoramento postural
 echo ===============================================
 echo.
 echo   Iniciando... o painel abre sozinho no navegador
@@ -16,5 +16,5 @@ echo.
 python main.py --kinect-sdk --kinect-sdk-depth
 
 echo.
-echo   SeeMove foi encerrado.
+echo   GuiaMove foi encerrado.
 pause

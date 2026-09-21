@@ -30,7 +30,7 @@ from config.settings import Settings, VoiceSettings, KinectSettings
 
 def parse_args():
     p = argparse.ArgumentParser(
-        description="SeeMove — monitoramento postural via Kinect + MediaPipe"
+        description="GuiaMove — monitoramento postural via Kinect + MediaPipe"
     )
     p.add_argument("--camera",     type=int,   default=0,
                    help="Índice da câmera/Kinect (padrão: 0)")
@@ -95,7 +95,7 @@ def main():
     args = parse_args()
 
     print("=" * 55)
-    print("  SeeMove — Monitoramento postural")
+    print("  GuiaMove — Monitoramento postural")
     print("  Kinect + MediaPipe Pose")
     print("=" * 55)
 

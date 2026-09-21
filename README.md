@@ -85,7 +85,7 @@ Na primeira vez que um exercício é iniciado depois de abrir o programa, há um
 - **Windows** (a ponte do Kinect só existe para ele; testado no Windows 11)
 - **Python 3.14** (versão em que foi testado)
 - Uma câmera: **Kinect v1** ou uma webcam
-- Navegador **Chrome ou Edge**, com internet. O controle por voz usa o reconhecimento de fala deles, que normalmente depende da rede.
+- Navegador **Chrome ou Edge**. O painel, com o boneco 3D, funciona sem internet (as bibliotecas ficam em `web/static/vendor`). Só o controle por voz normalmente depende da rede, porque usa o reconhecimento de fala do navegador.
 
 ### Instalar
 
@@ -170,7 +170,7 @@ O sistema ignora o eco da própria voz, e frases longas nunca contam como comand
 │   └── filters.py                One Euro Filter
 ├── exercises/                    agachamento, postura estática e equilíbrio
 ├── audio/                        coordenação de fala, motores de voz e bipes
-├── web/                          servidor Flask/Socket.IO e o dashboard (com o boneco 3D)
+├── web/                          servidor Flask/Socket.IO e o dashboard (com o boneco 3D; three.js e socket.io em static/vendor, a logo em static/brand)
 ├── reports/                      relatório CSV da sessão
 ├── config/                       configurações padrão
 ├── native/kinect_bridge/         ponte C++ (SDK do Kinect → Python)

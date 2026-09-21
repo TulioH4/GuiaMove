@@ -585,7 +585,7 @@ def test_voice():
     if _session is None:
         return jsonify({"error": "sessão não inicializada"}), 500
     data = request.get_json(silent=True) or {}
-    msg  = data.get("message", "Teste de voz do SeeMove.")
+    msg  = data.get("message", "Teste de voz do Guia Move.")
     _session.audio.speak_now(msg)
     return jsonify({"ok": True})
 
@@ -726,7 +726,7 @@ def start(port: int = 5000, open_browser: bool = True):
     # que ainda controla a câmera — parecia que a nova não fazia nada.
     if _port_in_use(port):
         raise RuntimeError(
-            f"A porta {port} já está em uso — provavelmente o SeeMove já está "
+            f"A porta {port} já está em uso — provavelmente o GuiaMove já está "
             f"aberto em outra janela. Feche-o ou use --port <outra porta>."
         )
 

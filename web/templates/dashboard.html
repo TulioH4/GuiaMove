@@ -3,81 +3,132 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>GuiaMove — Kinect</title>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/socket.io@4.7.2/client-dist/socket.io.min.js"></script>
+<title>GuiaMove — Monitoramento postural</title>
+<meta name="theme-color" content="#0061AE">
+<link rel="icon" type="image/svg+xml" href="{{ url_for('static', filename='brand/logo-icon.svg') }}">
+<!-- three.js r128 e socket.io-client 4.7.2 ficam DENTRO do projeto (web/static/vendor): o painel
+     abre sem internet. Só se o arquivo local sumir (pasta copiada sem o vendor/) cai pro CDN de antes.
+     Versões, origem e hashes em web/static/vendor/LEIA-ME.txt. -->
+<script src="{{ url_for('static', filename='vendor/three.min.js') }}"></script>
+<script>window.THREE || document.write('<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"><\/script>')</script>
+<script src="{{ url_for('static', filename='vendor/socket.io.min.js') }}"></script>
+<script>window.io || document.write('<script src="https://cdn.jsdelivr.net/npm/socket.io@4.7.2/client-dist/socket.io.min.js"><\/script>')</script>
 <style>
-*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
 :root{
-  --bg:#0c0e18;--bg2:#13162200;--bg2s:#131622;--bg3:#1a1e2e;--bg4:#222640;
-  --border:rgba(255,255,255,0.07);--border2:rgba(255,255,255,0.13);
-  --green:#1fcc8a;--gd:rgba(31,204,138,.12);
-  --blue:#4a9eff;--bd:rgba(74,158,255,.12);
-  --amber:#f5a623;--ad:rgba(245,166,35,.12);
-  --red:#ff5c5c;--rd:rgba(255,92,92,.12);
-  --purple:#a78bfa;--pd:rgba(167,139,250,.12);
-  --text:#e8eaf0;--text2:#8b90a0;--text3:#3e4558;
-  --r:12px;--rs:8px;
-  --shadow:0 8px 26px -10px rgba(0,0,0,.55), 0 1px 0 rgba(255,255,255,.03) inset;
+  /* ══ VERSÃO A · CLARO — branco e azul-claro, azul da marca nos destaques ══
+     --brand (azul da marca) lidera; --sky (céu) só como detalhe, nunca como texto sobre branco;
+     --title (marinho) nos títulos. Os nomes --green/--amber/--red/--blue/--purple são ANTIGOS e ficam porque o JS usa
+     var(--green), var(--amber) e var(--red) nos medidores e no status: hoje --green significa "ok / normal". */
+  --brand:#0061AE;--brand-h:#004F8F;--brand-d:rgba(0,97,174,.09);--on-brand:#fff;
+  --accent:#0061AE;--title:#04537F;
+  --sky:#1BAEEE;--sky-d:rgba(27,174,238,.15);--navy:#04537F;--slate:#343E47;
+  --bg:#EEF4FA;
+  --page-bg:radial-gradient(900px 380px at 12% -8%,rgba(27,174,238,.14),transparent 65%) no-repeat,linear-gradient(180deg,#E3EDF8 0,#EEF4FA 340px) no-repeat,#EEF4FA;
+  --bg2:#FFFFFF00;--bg2s:#FFFFFF;--bg3:#F2F7FC;--bg4:#E3EDF7;--border:#DAE6F1;--border2:#C4D6E7;
+  --shadow:0 1px 2px rgba(4,83,127,.05),0 12px 28px -16px rgba(4,83,127,.28);
+  --text:#1B2733;--text2:#4D6074;--text3:#5F7387;
+  --green:var(--brand);--gd:#E8F1FA;--on-ok:#FFFFFF;--ok-line:rgba(0,97,174,.35);
+  --amber:#B45309;--ad:#FEF3E2;--on-warn:#FFFFFF;--warn-line:rgba(180,83,9,.4);
+  --red:#C62828;--rd:#FDECEC;--on-err:#FFFFFF;--err-line:rgba(198,40,40,.4);
+  --blue:var(--navy);--bd:#E4EEF6;--purple:var(--navy);--pd:#E4EEF6;
+  --r:16px;--rs:10px;
+  --hdr-bg:#FFFFFF;--hdr-line:#DAE6F1;--hdr-bar:linear-gradient(90deg,#0061AE,#1BAEEE);--hdr-sub:#4D6074;
+  --hbtn-bg:#FFFFFF;--hbtn-fg:#1B2733;--hbtn-line:#C4D6E7;--hbtn-hover-bg:rgba(0,97,174,.09);--hbtn-hover-fg:#004F8F;--hbtn-hover-line:#0061AE;
+  --hbtn-danger-bg:#FFFFFF;--hbtn-danger-fg:#C62828;--hbtn-danger-line:#E3A9A9;--hbtn-danger-hover:#FDECEC;
+  --pri-bg:#0061AE;--pri-fg:#FFFFFF;--pri-h:#004F8F;--pri-shadow:0 1px 2px rgba(0,97,174,.25);
+  --btn-bg:#FFFFFF;--btn-fg:#1B2733;--btn-line:#C4D6E7;--btn-hover-bg:rgba(0,97,174,.09);--btn-hover-fg:#0061AE;--btn-hover-line:#0061AE;
+  --chip-bg:#FFFFFF;--chip-fg:#4D6074;--chip-line:#C4D6E7;--chip-icon:#0061AE;--chip-hover-line:#0061AE;--chip-hover-fg:#0061AE;
+  --chip-on-bg:#0061AE;--chip-on-fg:#FFFFFF;--chip-on-line:#0061AE;--chip-on-shadow:0 1px 2px rgba(0,97,174,.25);
+  --pill-bg:#F2F7FC;--pill-fg:#4D6074;--pill-line:#DAE6F1;
+  --tabs-line:#DAE6F1;--tab-fg:#4D6074;--tab-hover:#0061AE;--tab-on-fg:#0061AE;--tab-on-line:#0061AE;--tab-icon:#0061AE;
+  --field-bg:#FFFFFF;--toggle-off:#C9D9E8;--toggle-on:#0061AE;--knob:#FFFFFF;--knob-shadow:0 1px 2px rgba(4,30,52,.3);--slider:#0061AE;
+  --dot-off:#9DB1C4;--dot-on:var(--green);--dot-err:var(--red);--ring-off:#9DB1C4;--gauge-mid:rgba(4,83,127,.35);--conf-track:rgba(255,255,255,.55);
+  --overlay:rgba(4,30,52,.55);--modal-shadow:0 28px 60px -22px rgba(4,30,52,.55);
+  --stage-text:#B7C6D8;--stage-bg:#0a0c16;
+  --foot-line:#DAE6F1;--foot-text:#4D6074;--foot-strong:#04537F;
+  --fb-ok-bg:#FFFFFF;--fb-ok-fg:#04537F;
 }
-body{background:var(--bg);color:var(--text);font-family:'Segoe UI',system-ui,sans-serif;font-size:14px;min-height:100vh;padding:18px 22px}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--page-bg);color:var(--text);font-family:'Segoe UI',system-ui,sans-serif;font-size:14px;min-height:100vh;padding:18px 22px}
+:focus-visible{outline:2px solid var(--sky);outline-offset:2px}
 
-/* ── Header ── */
-header{display:flex;align-items:center;gap:12px;margin-bottom:16px;flex-wrap:wrap}
-.logo{width:36px;height:36px;background:var(--green);border-radius:var(--rs);display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0}
-.logo-txt h1{font-size:17px;font-weight:600;line-height:1.2}
-.logo-txt p{font-size:11px;color:var(--text2)}
+/* ── Header (barra com a marca) ── */
+header{display:flex;align-items:center;gap:14px;margin:-18px -22px 14px;padding:12px 22px 10px;flex-wrap:wrap;background:var(--hdr-bg);border-bottom:1px solid var(--hdr-line);position:relative}
+header::before{content:"";position:absolute;left:0;right:0;top:0;height:4px;background:var(--hdr-bar)}
+.brand{display:flex;align-items:center;gap:14px}
+.brand-icon{display:block;height:48px;width:auto;flex-shrink:0}
+.logo-txt h1{display:block;line-height:0;font-size:0}
+.brand-word{display:block;height:22px;width:auto}
+.logo-txt p{font-size:11.5px;color:var(--hdr-sub);margin-top:5px;letter-spacing:.03em}
 .hright{margin-left:auto;display:flex;align-items:center;gap:8px;flex-wrap:wrap}
-.pill{display:flex;align-items:center;gap:6px;background:var(--bg3);border:1px solid var(--border);border-radius:999px;padding:5px 12px;font-size:12px;color:var(--text2);white-space:nowrap}
-.dot{width:7px;height:7px;border-radius:50%;background:var(--text3);flex-shrink:0}
-.dot.on{background:var(--green);animation:blink 1.6s ease-in-out infinite}
-.dot.err{background:var(--red)}
+.pill{display:flex;align-items:center;gap:6px;background:var(--pill-bg);border:1px solid var(--pill-line);border-radius:999px;padding:5px 12px;font-size:12px;color:var(--pill-fg);white-space:nowrap}
+.dot{width:8px;height:8px;border-radius:50%;background:var(--dot-off);flex-shrink:0}
+.dot.on{background:var(--dot-on);animation:blink 1.6s ease-in-out infinite}
+.dot.err{background:var(--dot-err)}
 @keyframes blink{0%,100%{opacity:1}50%{opacity:.3}}
-.hbtn{display:flex;align-items:center;gap:6px;padding:6px 13px;border-radius:var(--rs);border:1px solid var(--border2);background:var(--bg3);color:var(--text2);font-size:13px;cursor:pointer;transition:all .15s;white-space:nowrap}
-.hbtn:hover{border-color:var(--green);color:var(--text)}
-.hbtn.primary{background:var(--green);border-color:var(--green);color:#000;font-weight:600}
-.hbtn.primary:hover{background:#18b87a}
-.hbtn.danger{border-color:var(--red);color:var(--red)}
+@media (prefers-reduced-motion:reduce){.dot.on{animation:none}}
+.hbtn{display:flex;align-items:center;gap:6px;padding:7px 14px;border-radius:var(--rs);border:1px solid var(--hbtn-line);background:var(--hbtn-bg);color:var(--hbtn-fg);font-size:13px;font-weight:500;cursor:pointer;transition:all .15s;white-space:nowrap}
+.hbtn:hover:not(:disabled){border-color:var(--hbtn-hover-line);color:var(--hbtn-hover-fg);background:var(--hbtn-hover-bg)}
+.hbtn:disabled{opacity:.5;cursor:not-allowed}
+.hbtn.primary{background:var(--pri-bg);border-color:var(--pri-bg);color:var(--pri-fg);font-weight:600;box-shadow:var(--pri-shadow)}
+.hbtn.primary:hover:not(:disabled){background:var(--pri-h);border-color:var(--pri-h);color:var(--pri-fg)}
+.hbtn.danger{border-color:var(--hbtn-danger-line);background:var(--hbtn-danger-bg);color:var(--hbtn-danger-fg)}
+.hbtn.danger:hover:not(:disabled){border-color:var(--red);color:var(--hbtn-danger-fg);background:var(--hbtn-danger-hover)}
 
 /* ── Tracker banner ── */
 .banner{display:flex;align-items:center;gap:12px;padding:10px 15px;border-radius:var(--rs);border:1px solid var(--border);background:var(--bg2s);margin-bottom:12px;flex-wrap:wrap;transition:all .3s}
-.banner.on{border-color:var(--green);background:var(--gd)}
-.banner.warn{border-color:var(--amber);background:var(--ad)}
-.banner.err{border-color:var(--red);background:var(--rd)}
+.banner.on{border-color:var(--ok-line);background:var(--gd)}
+.banner.warn{border-color:var(--warn-line);background:var(--ad)}
+.banner.err{border-color:var(--err-line);background:var(--rd)}
 .bmsg{font-size:13px;color:var(--text2);flex:1}
 .banner.on .bmsg{color:var(--green)}
 .banner.warn .bmsg{color:var(--amber)}
 .banner.err .bmsg{color:var(--red)}
+/* O JS escreve um emoji (✅ / 📡) neste ícone; aqui ele vira um selo nas cores da marca (o texto continua lá). */
+#trackerIcon{position:relative;width:22px;height:22px;flex-shrink:0;font-size:0}
+#trackerIcon::before{content:"";position:absolute;inset:0;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;line-height:1;box-sizing:border-box;border:2px solid var(--ring-off);background:transparent;color:var(--on-ok)}
+.banner.on #trackerIcon::before{content:"✓";background:var(--green);border-color:var(--green);color:var(--on-ok)}
+.banner.warn #trackerIcon::before{content:"!";background:var(--amber);border-color:var(--amber);color:var(--on-warn)}
+.banner.err #trackerIcon::before{content:"!";background:var(--red);border-color:var(--red);color:var(--on-err)}
 
 /* ── Exercises ── */
 .exs{display:flex;gap:8px;margin-bottom:14px;flex-wrap:wrap}
-.exb{padding:6px 16px;border-radius:999px;border:1px solid var(--border);background:var(--bg2s);color:var(--text2);cursor:pointer;font-size:13px;transition:all .15s}
-.exb:hover{border-color:var(--green);color:var(--text)}
-.exb.active{background:var(--green);border-color:var(--green);color:#000;font-weight:600}
+.exb{padding:7px 17px;border-radius:999px;border:1px solid var(--chip-line);background:var(--chip-bg);color:var(--chip-fg);cursor:pointer;font-size:13px;font-weight:500;transition:all .15s}
+.exb:hover{border-color:var(--chip-hover-line);color:var(--chip-hover-fg)}
+.exb.active{background:var(--chip-on-bg);border-color:var(--chip-on-line);color:var(--chip-on-fg);font-weight:600;box-shadow:var(--chip-on-shadow)}
 
 /* ── Feedback bar ── */
-.fbbar{padding:11px 16px;border-radius:var(--rs);margin-bottom:16px;font-size:14px;font-weight:500;border-left:3px solid;display:flex;align-items:flex-start;gap:10px;transition:all .3s;line-height:1.45}
-.fbbar.ok{background:var(--gd);border-color:var(--green);color:var(--green)}
+.fbbar{padding:12px 16px;border-radius:var(--rs);margin-bottom:16px;font-size:14px;font-weight:500;border-left:4px solid;display:flex;align-items:flex-start;gap:10px;transition:all .3s;line-height:1.45}
+.fbbar.ok{background:var(--fb-ok-bg);border-color:var(--green);color:var(--fb-ok-fg);box-shadow:var(--shadow)}
 .fbbar.warn{background:var(--ad);border-color:var(--amber);color:var(--amber)}
 .fbbar.error{background:var(--rd);border-color:var(--red);color:var(--red)}
 .fb-icon{font-size:16px;flex-shrink:0;margin-top:1px}
+.fbbar.ok .fb-icon{color:var(--green)}
 
 /* ══ Seção superior: câmera + boneco 3D lado a lado, mesma proporção ══ */
 .live-row{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:18px}
 .live-panel{background:var(--bg2s);border:1px solid var(--border);border-radius:var(--r);box-shadow:var(--shadow);overflow:hidden;display:flex;flex-direction:column}
 .live-head{display:flex;align-items:center;gap:8px;padding:11px 14px;border-bottom:1px solid var(--border)}
-.live-head .lt{font-size:11px;text-transform:uppercase;letter-spacing:.06em;color:var(--text2);font-weight:600}
-.live-badge{margin-left:auto;display:flex;align-items:center;gap:5px;font-size:10.5px;font-weight:600;letter-spacing:.03em;padding:3px 9px;border-radius:999px}
-.live-badge.cam{background:rgba(31,204,138,.14);color:var(--green)}
-.live-badge.mirror{background:rgba(74,158,255,.14);color:var(--blue)}
-.live-icon-btn{width:26px;height:26px;border-radius:7px;border:1px solid var(--border2);background:var(--bg3);color:var(--text2);display:flex;align-items:center;justify-content:center;font-size:13px;cursor:pointer;flex-shrink:0}
-.live-icon-btn:hover{border-color:var(--green);color:var(--text)}
+.live-head .lt{font-size:11.5px;text-transform:uppercase;letter-spacing:.07em;color:var(--title);font-weight:700}
+.live-badge{margin-left:auto;display:flex;align-items:center;gap:5px;font-size:10.5px;font-weight:700;letter-spacing:.04em;padding:3px 9px;border-radius:999px}
+.live-badge.cam{background:var(--gd);color:var(--green)}
+.live-badge.mirror{background:var(--sky-d);color:var(--title)}
+.live-icon-btn{width:28px;height:28px;border-radius:8px;border:1px solid var(--btn-line);background:var(--btn-bg);color:var(--text2);display:flex;align-items:center;justify-content:center;font-size:13px;cursor:pointer;flex-shrink:0;transition:all .15s}
+.live-icon-btn:hover{border-color:var(--btn-hover-line);color:var(--btn-hover-fg);background:var(--btn-hover-bg)}
 .tilt-controls{display:flex;align-items:center;gap:8px;padding:10px 14px;border-top:1px solid var(--border)}
 .tilt-controls .tv{font-variant-numeric:tabular-nums;font-size:12px;color:var(--text2)}
 .tilt-standby-badge{font-size:10.5px;color:var(--text3);border:1px solid var(--border2);border-radius:999px;padding:2px 8px;display:none}
-.tilt-standby-badge.active{display:inline-block;color:var(--blue)}
+.tilt-standby-badge.active{display:inline-block;color:var(--title);background:var(--sky-d);border-color:transparent;font-weight:600}
+/* Standby do boneco (botão 👋 no painel do boneco): botão aceso enquanto ligado, e o aviso
+   "Aguardando esqueleto detectado" não pode cobrir o boneco enquanto ele faz os gestos. */
+.live-icon-btn.on{border-color:var(--pri-bg);color:var(--pri-fg);background:var(--pri-bg)}
+.live-icon-btn:disabled{opacity:.4;cursor:not-allowed}
+#panelBoneco3D.avatar-standby #c3dOverlay{display:none!important}
+#panelCamera .live-head .lt{margin-right:auto}
+#panelCamera .live-badge{margin-left:0}
 .live-stage{position:relative;aspect-ratio:4/3;background:var(--bg3);overflow:hidden}
-.live-foot{display:flex;justify-content:space-between;padding:8px 14px;font-size:11.5px;color:var(--text2);border-top:1px solid var(--border)}
+#panelBoneco3D .live-stage{background:var(--stage-bg)}
+.live-foot{display:flex;justify-content:space-between;padding:9px 14px;font-size:11.5px;color:var(--text2);border-top:1px solid var(--border)}
 .live-foot b{color:var(--text);font-variant-numeric:tabular-nums}
 
 /* ══ Janela solo (popOut) — abre só um painel (câmera/boneco/stats/config)
@@ -96,31 +147,35 @@ body.solo-mode #soloContainer{
 body.solo-mode #soloContainer > *{width:100%}
 body.solo-mode .live-stage{aspect-ratio:unset;flex:1;min-height:0}
 body.solo-mode .live-panel{height:100%}
+/* Na janela solo (2ª tela da feira) a marca aparece no cabeçalho do painel. */
+body.solo-mode .live-head::before{content:"";flex:0 0 auto;width:124px;height:21px;margin-right:8px;background:url("{{ url_for('static', filename='brand/logo-wordmark.svg') }}") left center/contain no-repeat}
 .solo-fullscreen-btn{
   position:fixed;top:16px;right:16px;z-index:10001;
-  background:var(--bg3);border:1px solid var(--border2);color:var(--text2);
+  background:var(--btn-bg);border:1px solid var(--btn-line);color:var(--btn-fg);
   border-radius:var(--rs);padding:8px 14px;font-size:13px;cursor:pointer;
 }
-.solo-fullscreen-btn:hover{border-color:var(--green);color:var(--text)}
+.solo-fullscreen-btn:hover{border-color:var(--btn-hover-line);color:var(--btn-hover-fg)}
 
 /* Vídeo (mesma marcação/lógica de sempre — só reposicionada) */
 .video-img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
-.video-overlay{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;color:var(--text3);font-size:13px;text-align:center;padding:20px}
-.video-badge{position:absolute;top:8px;right:8px;background:rgba(0,0,0,.6);border-radius:999px;padding:3px 10px;font-size:11px;color:var(--text2)}
-.video-badge.live{color:var(--green)}
-.confidence-bar{position:absolute;bottom:0;left:0;right:0;height:3px;background:rgba(255,255,255,.1)}
-.confidence-fill{height:100%;background:var(--green);transition:width .3s}
+.video-overlay{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;color:var(--text2);font-size:13px;text-align:center;padding:20px}
+.video-badge{position:absolute;top:8px;right:8px;background:rgba(4,30,52,.7);border-radius:999px;padding:3px 10px;font-size:11px;color:#fff}
+.video-badge.live{color:#8FD8FF}
+.confidence-bar{position:absolute;bottom:0;left:0;right:0;height:4px;background:var(--conf-track)}
+.confidence-fill{height:100%;background:linear-gradient(90deg,var(--sky),var(--brand));transition:width .3s}
+.empty-ico{width:46px;height:46px;color:var(--accent);opacity:.8}
+.empty-mark{width:62px;height:auto;display:block;opacity:.95}
 
-/* Boneco 3D */
+/* Boneco 3D (palco escuro como sempre foi) */
 #c3dEmbed{position:absolute;inset:0;width:100%;height:100%;display:block}
-.mirror-overlay{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;color:var(--text3);font-size:13px;text-align:center;padding:20px;pointer-events:none}
+.mirror-overlay{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:flex-start;gap:10px;color:var(--stage-text);font-size:13px;text-align:center;padding:26px 20px 20px;pointer-events:none}
 
 /* ══ Seção inferior: controles, métricas + log lateral ══ */
 .lower{display:grid;grid-template-columns:1fr 320px;gap:16px;align-items:start}
 .lower-main{display:flex;flex-direction:column;gap:16px}
 
-.card{background:var(--bg2s);border:1px solid var(--border);border-radius:var(--r);padding:14px;box-shadow:var(--shadow)}
-.ctitle{font-size:11px;text-transform:uppercase;letter-spacing:.06em;color:var(--text2);margin-bottom:12px}
+.card{background:var(--bg2s);border:1px solid var(--border);border-radius:var(--r);padding:16px;box-shadow:var(--shadow)}
+.ctitle{font-size:11.5px;text-transform:uppercase;letter-spacing:.07em;color:var(--title);font-weight:700;margin-bottom:12px}
 
 /* ── Grid ── */
 .g2{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px}
@@ -130,7 +185,7 @@ body.solo-mode .live-panel{height:100%}
 @media(max-width:700px){.g2,.g3,.g4{grid-template-columns:1fr 1fr}}
 
 /* ── Metric ── */
-.metric{background:var(--bg3);border-radius:var(--rs);padding:12px}
+.metric{background:var(--bg3);border:1px solid var(--border);border-radius:var(--rs);padding:12px}
 .ml{font-size:11px;color:var(--text2);margin-bottom:4px}
 .mv{font-size:22px;font-weight:600;font-variant-numeric:tabular-nums}
 .mv.ok{color:var(--green)}.mv.warn{color:var(--amber)}.mv.err{color:var(--red)}
@@ -139,26 +194,26 @@ body.solo-mode .live-panel{height:100%}
 /* ── Gauge bars ── */
 .gauge-row{display:flex;align-items:center;gap:10px;margin-bottom:8px}
 .gauge-lbl{font-size:12px;color:var(--text2);width:130px;flex-shrink:0}
-.gauge-track{flex:1;height:6px;background:var(--bg3);border-radius:3px;position:relative;overflow:hidden}
-.gauge-center{position:absolute;left:50%;top:0;bottom:0;width:1px;background:rgba(255,255,255,.15)}
-.gauge-fill{position:absolute;height:100%;border-radius:3px;transition:all .3s}
+.gauge-track{flex:1;height:7px;background:var(--bg4);border-radius:4px;position:relative;overflow:hidden}
+.gauge-center{position:absolute;left:50%;top:0;bottom:0;width:1px;background:var(--gauge-mid)}
+.gauge-fill{position:absolute;height:100%;border-radius:4px;transition:all .3s}
 .gauge-val{font-size:11px;color:var(--text2);width:46px;text-align:right;font-variant-numeric:tabular-nums}
 
 /* ── TTS Log (lateral) ── */
 .log-card{display:flex;flex-direction:column;height:100%}
 .log-card .ctitle{display:flex;justify-content:space-between;align-items:center}
 .ttslog{display:flex;flex-direction:column;max-height:640px;overflow-y:auto}
-.ttsentry{display:flex;gap:10px;padding:6px 0;border-bottom:1px solid var(--border);font-size:12px}
+.ttsentry{display:flex;gap:10px;padding:7px 0;border-bottom:1px solid var(--border);font-size:12px}
 .ttsentry:last-child{border-bottom:none}
 .ttime{color:var(--text3);flex-shrink:0;min-width:34px;font-variant-numeric:tabular-nums}
 .tmsg.ok{color:var(--green)}.tmsg.warn{color:var(--amber)}.tmsg.error{color:var(--red)}
 .tmsg{color:var(--text)}
 
 /* ── Tabs (Voz / Sessão) ── */
-.tabs{display:flex;gap:2px;margin-bottom:14px;border-bottom:1px solid var(--border)}
-.tab{padding:7px 16px;font-size:13px;color:var(--text2);cursor:pointer;border-bottom:2px solid transparent;margin-bottom:-1px;transition:all .15s}
-.tab:hover{color:var(--text)}
-.tab.active{color:var(--green);border-bottom-color:var(--green);font-weight:500}
+.tabs{display:flex;gap:2px;margin-bottom:14px;border-bottom:1px solid var(--tabs-line)}
+.tab{padding:8px 16px;font-size:13px;color:var(--tab-fg);cursor:pointer;border-bottom:2px solid transparent;margin-bottom:-1px;transition:all .15s}
+.tab:hover{color:var(--tab-hover)}
+.tab.active{color:var(--tab-on-fg);border-bottom-color:var(--tab-on-line);font-weight:600}
 .tabpanel{display:none}
 .tabpanel.active{display:block}
 
@@ -168,40 +223,61 @@ body.solo-mode .live-panel{height:100%}
 .vlbl{font-size:12px;color:var(--text2)}
 .vval{font-size:13px;font-weight:600;color:var(--text);min-width:38px;text-align:right}
 .slider-row{display:flex;align-items:center;gap:10px}
-input[type=range]{flex:1;accent-color:var(--green);height:4px;cursor:pointer}
-select.vsel{width:100%;background:var(--bg3);border:1px solid var(--border2);border-radius:var(--rs);color:var(--text);padding:7px 10px;font-size:13px;cursor:pointer}
-select.vsel:focus{outline:none;border-color:var(--green)}
+input[type=range]{flex:1;accent-color:var(--slider);height:4px;cursor:pointer}
+select.vsel{width:100%;background:var(--field-bg);border:1px solid var(--border2);border-radius:var(--rs);color:var(--text);padding:8px 10px;font-size:13px;cursor:pointer}
+select.vsel:focus{outline:none;border-color:var(--accent);box-shadow:0 0 0 3px var(--sky-d)}
 .vtoggle{display:flex;align-items:center;gap:10px}
 .toggle-switch{position:relative;width:40px;height:22px;flex-shrink:0}
 .toggle-switch input{opacity:0;width:0;height:0}
-.toggle-slider{position:absolute;inset:0;background:var(--bg3);border-radius:11px;transition:.2s;cursor:pointer;border:1px solid var(--border2)}
-.toggle-slider::before{content:'';position:absolute;width:16px;height:16px;left:2px;top:2px;background:var(--text3);border-radius:50%;transition:.2s}
-.toggle-switch input:checked + .toggle-slider{background:var(--green);border-color:var(--green)}
+.toggle-slider{position:absolute;inset:0;background:var(--toggle-off);border-radius:11px;transition:.2s;cursor:pointer;border:1px solid var(--border2)}
+.toggle-slider::before{content:'';position:absolute;width:16px;height:16px;left:2px;top:2px;background:var(--knob);box-shadow:var(--knob-shadow);border-radius:50%;transition:.2s}
+.toggle-switch input:checked + .toggle-slider{background:var(--toggle-on);border-color:var(--toggle-on)}
 .toggle-switch input:checked + .toggle-slider::before{transform:translateX(18px);background:#fff}
-.vbtn{padding:7px 14px;border-radius:var(--rs);border:1px solid var(--border2);background:var(--bg3);color:var(--text2);font-size:13px;cursor:pointer;transition:all .15s}
-.vbtn:hover{border-color:var(--green);color:var(--text)}
-.vbtn.primary{background:var(--green);border-color:var(--green);color:#000;font-weight:600}
+.toggle-switch input:focus-visible + .toggle-slider{outline:2px solid var(--sky);outline-offset:2px}
+.vbtn{padding:8px 14px;border-radius:var(--rs);border:1px solid var(--btn-line);background:var(--btn-bg);color:var(--btn-fg);font-size:13px;font-weight:500;cursor:pointer;transition:all .15s}
+.vbtn:hover{border-color:var(--btn-hover-line);color:var(--btn-hover-fg);background:var(--btn-hover-bg)}
+.vbtn.primary{background:var(--pri-bg);border-color:var(--pri-bg);color:var(--pri-fg);font-weight:600;box-shadow:var(--pri-shadow)}
+.vbtn.primary:hover{background:var(--pri-h);border-color:var(--pri-h);color:var(--pri-fg)}
 
 /* ── Session metrics ── */
 .sess-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:10px}
 
 /* ── Modal ── */
-.modal-bg{display:none;position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:100;align-items:center;justify-content:center}
+.modal-bg{display:none;position:fixed;inset:0;background:var(--overlay);z-index:100;align-items:center;justify-content:center}
 .modal-bg.open{display:flex}
-.modal{background:var(--bg2s);border:1px solid var(--border2);border-radius:var(--r);padding:22px;max-width:440px;width:92%;max-height:90vh;overflow-y:auto}
-.modal h3{font-size:16px;font-weight:600;margin-bottom:8px}
+.modal{background:var(--bg2s);border:1px solid var(--border);border-top:4px solid var(--brand);border-radius:var(--r);padding:22px;max-width:440px;width:92%;max-height:90vh;overflow-y:auto;box-shadow:var(--modal-shadow)}
+.modal h3{font-size:16px;font-weight:700;color:var(--title);margin-bottom:8px}
 .modal p{font-size:13px;color:var(--text2);margin-bottom:16px;line-height:1.55}
 .modal-btns{display:flex;flex-direction:column;gap:8px}
-.mbtn{display:flex;align-items:center;gap:10px;padding:11px 14px;border-radius:var(--rs);border:1px solid var(--border2);background:var(--bg3);color:var(--text);font-size:13px;cursor:pointer;transition:all .15s;text-align:left;width:100%}
-.mbtn:hover{border-color:var(--green);background:var(--gd)}
+.mbtn{display:flex;align-items:center;gap:10px;padding:11px 14px;border-radius:var(--rs);border:1px solid var(--btn-line);background:var(--btn-bg);color:var(--text);font-size:13px;cursor:pointer;transition:all .15s;text-align:left;width:100%}
+.mbtn:hover{border-color:var(--btn-hover-line);background:var(--gd)}
 .micon{font-size:18px;width:24px;text-align:center}
 .mdesc{font-size:11px;color:var(--text2);margin-top:2px}
 .mfoot{display:flex;justify-content:flex-end;margin-top:14px;gap:8px}
-.mcancel{padding:6px 16px;border-radius:var(--rs);border:1px solid var(--border);background:transparent;color:var(--text2);cursor:pointer;font-size:13px}
+.mcancel{padding:7px 16px;border-radius:var(--rs);border:1px solid var(--btn-line);background:transparent;color:var(--text2);cursor:pointer;font-size:13px}
+.mcancel:hover{border-color:var(--btn-hover-line);color:var(--btn-hover-fg)}
 .steps{list-style:none;display:flex;flex-direction:column;gap:10px;margin-bottom:16px}
 .steps li{display:flex;align-items:flex-start;gap:10px;font-size:13px;color:var(--text2)}
-.snum{width:22px;height:22px;border-radius:50%;background:var(--bg4);color:var(--green);font-size:12px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0}
-code{background:var(--bg3);padding:2px 7px;border-radius:4px;font-size:12px}
+.snum{width:22px;height:22px;border-radius:50%;background:var(--sky-d);color:var(--title);font-size:12px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+code{background:var(--bg4);color:var(--title);padding:2px 7px;border-radius:4px;font-size:12px}
+
+/* ── Ícones de linha (no lugar dos emojis coloridos dos textos fixos) ── */
+.i{width:1.2em;height:1.2em;flex-shrink:0;vertical-align:-.24em;margin-right:.45em;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.hbtn .i,.live-icon-btn .i{margin-right:0}
+.exb{display:inline-flex;align-items:center}
+.exb:not(.active) .i{color:var(--chip-icon)}
+.live-head .lt .i,.ctitle .i,.modal h3 .i{color:var(--accent)}
+.tab .i{color:var(--tab-icon)}
+.micon .i{width:20px;height:20px;margin:0;color:var(--accent)}
+#repBadge .i{color:var(--accent)}
+.modal h3{display:flex;align-items:center}
+
+/* ── Rodapé com a marca ── */
+.brandfoot{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-top:22px;padding:16px 2px 4px;border-top:1px solid var(--foot-line);color:var(--foot-text);font-size:12px}
+.brandfoot img{height:26px;width:auto;display:block}
+.brandfoot b{color:var(--foot-strong);font-weight:700}
+.brandfoot .sp{margin-left:auto;letter-spacing:.06em;text-transform:uppercase;font-size:11px;font-weight:600;color:var(--foot-text)}
+
 </style>
 </head>
 <body>
@@ -212,10 +288,12 @@ code{background:var(--bg3);padding:2px 7px;border-radius:4px;font-size:12px}
 
 <!-- Header -->
 <header>
-  <div class="logo">🦯</div>
-  <div class="logo-txt">
-    <h1>GuiaMove</h1>
-    <p>Monitoramento Postural</p>
+  <div class="brand">
+    <img class="brand-icon" src="{{ url_for('static', filename='brand/logo-icon.svg') }}" alt="">
+    <div class="logo-txt">
+      <h1><img class="brand-word" src="{{ url_for('static', filename='brand/logo-wordmark.svg') }}" alt="GuiaMove"></h1>
+      <p>Monitoramento Postural</p>
+    </div>
   </div>
   <div class="hright">
     <div class="pill"><div class="dot" id="connDot"></div><span id="connText">Conectando...</span></div>
@@ -223,7 +301,7 @@ code{background:var(--bg3);padding:2px 7px;border-radius:4px;font-size:12px}
             title="Controle por voz — diga 'ajuda' para ouvir os comandos disponíveis">
       🎙 Controle por voz
     </button>
-    <button class="hbtn primary" onclick="openModal('reportModal')">📄 Relatório</button>
+    <button class="hbtn primary" onclick="openModal('reportModal')"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M7 3.5h6.4L18 8.1v11.4a1 1 0 0 1-1 1H7a1 1 0 0 1-1-1v-15a1 1 0 0 1 1-1z"/><path d="M13.4 3.5v4.6H18M9 12.6h6M9 16.2h6"/></svg>Relatório</button>
   </div>
 </header>
 
@@ -237,12 +315,12 @@ code{background:var(--bg3);padding:2px 7px;border-radius:4px;font-size:12px}
 <!-- Exercises + controles -->
 <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px;flex-wrap:wrap">
   <div class="exs" style="margin-bottom:0;flex:1">
-    <button class="exb active" data-ex="squat"   onclick="setEx(this)">🦵 Agachamento</button>
-    <button class="exb"        data-ex="stand"   onclick="setEx(this)">🧍 Postura estática</button>
-    <button class="exb"        data-ex="balance" onclick="setEx(this)">⚖ Equilíbrio unipodial</button>
+    <button class="exb active" data-ex="squat"   onclick="setEx(this)"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12.6" cy="4.4" r="1.9"/><path d="M12.2 7.5 9.7 13"/><path d="m9.7 13 6.2-.8-.8 6.9"/><path d="m12.3 8.4 5.4 1.8"/><path d="M13.6 19.2h3"/></svg>Agachamento</button>
+    <button class="exb"        data-ex="stand"   onclick="setEx(this)"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="4.6" r="2"/><path d="M7.2 10.2 12 8.2l4.8 2"/><path d="M12 8.2v6"/><path d="m12 14.2-2.7 6.2M12 14.2l2.7 6.2"/></svg>Postura estática</button>
+    <button class="exb"        data-ex="balance" onclick="setEx(this)"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="4.6" r="2"/><path d="M5.5 10h13"/><path d="M12 8.2v6"/><path d="m12 14.2-.6 6.2"/><path d="m12 14.2 4.3 1.3-1.1 3.6"/></svg>Equilíbrio unipodial</button>
   </div>
   <button class="hbtn" id="btnSetup" onclick="startSetup()" title="Verifica se você está de corpo inteiro no enquadramento da câmera, com orientação por voz">
-    🎯 Iniciar configuração
+    <svg class="i" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8.2"/><circle cx="12" cy="12" r="4.2"/><circle cx="12" cy="12" r=".7" fill="currentColor"/></svg>Iniciar configuração
   </button>
   <button class="hbtn primary" id="btnStart" onclick="startExercise()" title="Anuncia o exercício por voz e inicia o monitoramento">
     ▶ Iniciar
@@ -265,7 +343,7 @@ code{background:var(--bg3);padding:2px 7px;border-radius:4px;font-size:12px}
      repetição (agachamento). Escondido por padrão porque postura
      estática/equilíbrio não têm esse conceito. -->
 <div class="pill" id="repBadge" style="display:none;margin-bottom:14px;gap:10px">
-  <span>🔁 Repetições: <b id="repCount" style="color:var(--green)">0</b></span>
+  <span><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="m17 3.6 3 3-3 3"/><path d="M20 6.6H9.6A5.6 5.6 0 0 0 4 12.2"/><path d="m7 20.4-3-3 3-3"/><path d="M4 17.4h10.4a5.6 5.6 0 0 0 5.6-5.6"/></svg>Repetições: <b id="repCount" style="color:var(--green)">0</b></span>
   <span id="repRejectedWrap" style="display:none;color:var(--amber)">
     · <b id="repRejectedCount">0</b> não contou (cadência)
   </span>
@@ -276,7 +354,7 @@ code{background:var(--bg3);padding:2px 7px;border-radius:4px;font-size:12px}
 
   <div class="live-panel" id="panelCamera">
     <div class="live-head">
-      <span class="lt">📷 Câmera ao vivo</span>
+      <span class="lt"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 8.5A1.5 1.5 0 0 1 5.5 7h2.2l1.1-1.6A1.5 1.5 0 0 1 10 4.75h4a1.5 1.5 0 0 1 1.2.65L16.3 7h2.2A1.5 1.5 0 0 1 20 8.5v9a1.5 1.5 0 0 1-1.5 1.5h-13A1.5 1.5 0 0 1 4 17.5z"/><circle cx="12" cy="12.6" r="3.4"/></svg>Câmera ao vivo</span>
       <span class="live-badge cam" id="videoBadge" style="display:none">● AO VIVO</span>
       <button class="live-icon-btn" onclick="popOut('camera')" title="Abrir em janela separada (útil pra mostrar em outra tela)">🗗</button>
       <button class="live-icon-btn" onclick="openModal('camModal')" title="Configurar câmera (índice, profundidade, conectar/desconectar)">⚙</button>
@@ -284,14 +362,14 @@ code{background:var(--bg3);padding:2px 7px;border-radius:4px;font-size:12px}
     <div class="live-stage" id="videoWrap">
       <img id="videoImg" class="video-img" style="display:none" alt="feed do kinect">
       <div class="video-overlay" id="videoOverlay">
-        <span style="font-size:32px">📷</span>
+        <svg class="empty-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 8.5A1.5 1.5 0 0 1 5.5 7h2.2l1.1-1.6A1.5 1.5 0 0 1 10 4.75h4a1.5 1.5 0 0 1 1.2.65L16.3 7h2.2A1.5 1.5 0 0 1 20 8.5v9a1.5 1.5 0 0 1-1.5 1.5h-13A1.5 1.5 0 0 1 4 17.5z"/><circle cx="12" cy="12.6" r="3.4"/></svg>
         <span>Câmera não conectada</span>
         <button class="hbtn primary" onclick="openModal('camModal')" style="margin-top:8px">Conectar câmera</button>
       </div>
       <div class="confidence-bar"><div class="confidence-fill" id="confFill" style="width:0%"></div></div>
     </div>
     <div class="tilt-controls" id="tiltControls" style="display:none">
-      <span class="lt" style="font-size:12px">🎚 Inclinação</span>
+      <span class="lt" style="font-size:12px"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M4.5 19h15"/><path d="M4.5 19 17 8.2"/><path d="M11.2 19a6.7 6.7 0 0 0-2-4.8"/></svg>Inclinação</span>
       <button class="live-icon-btn" onclick="tiltKinectDelta(5)" title="Inclinar câmera pra cima">▲</button>
       <button class="live-icon-btn" onclick="tiltKinectDelta(-5)" title="Inclinar câmera pra baixo">▼</button>
       <span class="tv" id="tiltVal" style="font-size:13px;color:var(--text)">0°</span>
@@ -308,15 +386,18 @@ code{background:var(--bg3);padding:2px 7px;border-radius:4px;font-size:12px}
 
   <div class="live-panel" id="panelBoneco3D">
     <div class="live-head">
-      <span class="lt">🧍 Boneco 3D</span>
+      <span class="lt"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3.2 19.6 7.5v9L12 20.8 4.4 16.5v-9z"/><path d="M12 12 19.6 7.5M12 12v8.8M12 12 4.4 7.5"/></svg>Boneco 3D</span>
+      <span class="tilt-standby-badge" id="avatarStandbyBadge" role="status" aria-live="polite"></span>
       <span class="live-badge mirror">⇄ ESPELHADO</span>
       <button class="live-icon-btn" onclick="popOut('boneco3d')" title="Abrir em janela separada (útil pra mostrar em outra tela)">🗗</button>
-      <button class="live-icon-btn" onclick="resetPose()" title="Reseta a posição do boneco e força uma nova leitura (use se ele travou numa pose errada)">🔄</button>
+      <button class="live-icon-btn" onclick="resetPose()" title="Reseta a posição do boneco e força uma nova leitura (use se ele travou numa pose errada)"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M19.6 11.4A7.6 7.6 0 1 0 17.4 17"/><path d="M19.8 4.6v6.4h-6.4"/></svg></button>
+      <button class="live-icon-btn" id="btnAvatarStandby" onclick="toggleAvatarStandby()" aria-pressed="false" aria-label="Standby do boneco"
+              title="Standby do boneco: ele dança e dá tchau enquanto ninguém está na câmera e para sozinho quando alguém aparece">👋</button>
     </div>
     <div class="live-stage">
       <canvas id="c3dEmbed"></canvas>
       <div class="mirror-overlay" id="c3dOverlay">
-        <span style="font-size:32px">🧍</span>
+        <img class="empty-mark" src="{{ url_for('static', filename='brand/logo-icon-dark.svg') }}" alt="">
         <span>Aguardando esqueleto detectado...</span>
       </div>
     </div>
@@ -400,8 +481,8 @@ code{background:var(--bg3);padding:2px 7px;border-radius:4px;font-size:12px}
 
     <!-- Tabs: Configuração / Sessão -->
     <div class="tabs">
-      <div class="tab active" onclick="switchTab('voice',this)">⚙ Configuração</div>
-      <div class="tab"        onclick="switchTab('session',this)">📋 Sessão</div>
+      <div class="tab active" onclick="switchTab('voice',this)"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h9.2M17.4 7H20M4 17h2.6M10.8 17H20"/><circle cx="15.3" cy="7" r="2.1"/><circle cx="8.7" cy="17" r="2.1"/></svg>Configuração</div>
+      <div class="tab"        onclick="switchTab('session',this)"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><rect x="5.5" y="4.6" width="13" height="16" rx="2"/><path d="M9.2 4.6V3.4h5.6v1.2M9 10.4h6M9 14.4h4"/></svg>Sessão</div>
     </div>
 
     <!-- ══ TAB: CONFIGURAÇÃO (calibração de enquadramento + voz) ══ -->
@@ -410,14 +491,14 @@ code{background:var(--bg3);padding:2px 7px;border-radius:4px;font-size:12px}
         <button class="live-icon-btn" onclick="popOut('config')" title="Abrir em janela separada (útil pra mostrar em outra tela)">🗗</button>
       </div>
       <div class="card" style="margin-bottom:14px">
-        <div class="ctitle">🎯 Calibração de enquadramento</div>
+        <div class="ctitle"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8.2"/><circle cx="12" cy="12" r="4.2"/><circle cx="12" cy="12" r=".7" fill="currentColor"/></svg>Calibração de enquadramento</div>
         <p style="font-size:13px;color:var(--text2);line-height:1.6;margin-bottom:12px">
-          Antes de iniciar qualquer exercício, o SeeMove confirma sozinho que você está de corpo
+          Antes de iniciar qualquer exercício, o GuiaMove confirma sozinho que você está de corpo
           inteiro visível pela câmera, orientando por voz até o enquadramento ficar correto.
           Isso já acontece automaticamente na primeira vez que você clicar em "Iniciar" — use o botão
           abaixo se quiser recalibrar manualmente (por exemplo, se você mudou de lugar).
         </p>
-        <button class="vbtn primary" onclick="startSetup()">🎯 Iniciar configuração</button>
+        <button class="vbtn primary" onclick="startSetup()"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8.2"/><circle cx="12" cy="12" r="4.2"/><circle cx="12" cy="12" r=".7" fill="currentColor"/></svg>Iniciar configuração</button>
       </div>
       <div class="voice-grid">
         <div class="card">
@@ -542,10 +623,16 @@ code{background:var(--bg3);padding:2px 7px;border-radius:4px;font-size:12px}
 
 </div>
 
+<footer class="brandfoot">
+  <img src="{{ url_for('static', filename='brand/logo-icon.svg') }}" alt="">
+  <span><b>GuiaMove</b> · monitoramento postural com Kinect e visão computacional</span>
+  <span class="sp">Inatel · FETIN</span>
+</footer>
+
 <!-- ══ MODAL: Câmera ══ -->
 <div class="modal-bg" id="camModal">
   <div class="modal">
-    <h3>📷 Conectar câmera / Kinect</h3>
+    <h3><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 8.5A1.5 1.5 0 0 1 5.5 7h2.2l1.1-1.6A1.5 1.5 0 0 1 10 4.75h4a1.5 1.5 0 0 1 1.2.65L16.3 7h2.2A1.5 1.5 0 0 1 20 8.5v9a1.5 1.5 0 0 1-1.5 1.5h-13A1.5 1.5 0 0 1 4 17.5z"/><circle cx="12" cy="12.6" r="3.4"/></svg>Conectar câmera / Kinect</h3>
     <p>O Kinect v1 é reconhecido como câmera RGB pelo Windows. Se tiver mais de uma câmera, tente índices diferentes.</p>
     <ul class="steps">
       <li><span class="snum">1</span>Conecte o Kinect via USB (alimentação separada necessária no v1).</li>
@@ -575,7 +662,7 @@ code{background:var(--bg3);padding:2px 7px;border-radius:4px;font-size:12px}
     </div>
     <div style="display:flex;gap:8px;justify-content:flex-end">
       <button class="mcancel" onclick="closeModal('camModal')">Cancelar</button>
-      <button class="hbtn primary" onclick="connectTracker()">🔍 Conectar</button>
+      <button class="hbtn primary" onclick="connectTracker()"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M9.8 14.2 14.2 9.8"/><path d="M11.3 6.9l1.2-1.2a3.6 3.6 0 0 1 5.1 5.1L16.4 12"/><path d="m12.7 17.1-1.2 1.2a3.6 3.6 0 0 1-5.1-5.1L7.6 12"/></svg>Conectar</button>
     </div>
   </div>
 </div>
@@ -583,19 +670,19 @@ code{background:var(--bg3);padding:2px 7px;border-radius:4px;font-size:12px}
 <!-- ══ MODAL: Relatório ══ -->
 <div class="modal-bg" id="reportModal">
   <div class="modal">
-    <h3>📄 Gerar Relatório</h3>
+    <h3><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M7 3.5h6.4L18 8.1v11.4a1 1 0 0 1-1 1H7a1 1 0 0 1-1-1v-15a1 1 0 0 1 1-1z"/><path d="M13.4 3.5v4.6H18M9 12.6h6M9 16.2h6"/></svg>Gerar Relatório</h3>
     <p>Exporta os dados da sessão atual com métricas biomecânicas detalhadas.</p>
     <div class="modal-btns">
       <button class="mbtn" onclick="downloadReport('html')">
-        <span class="micon">🌐</span>
+        <span class="micon"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8.4"/><path d="M3.6 12h16.8"/><path d="M12 3.6c2.3 2.3 3.4 5.1 3.4 8.4s-1.1 6.1-3.4 8.4c-2.3-2.3-3.4-5.1-3.4-8.4S9.7 5.9 12 3.6z"/></svg></span>
         <div><div>Relatório HTML</div><div class="mdesc">Abre no navegador — visualize e imprima</div></div>
       </button>
       <button class="mbtn" onclick="downloadReport('csv')">
-        <span class="micon">📊</span>
+        <span class="micon"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="4.6" width="16" height="14.8" rx="2"/><path d="M4 10h16M4 14.8h16M10 10v9.4"/></svg></span>
         <div><div>Dados CSV</div><div class="mdesc">Todos os frames com métricas para análise</div></div>
       </button>
       <button class="mbtn" onclick="downloadReport('json')">
-        <span class="micon">🔧</span>
+        <span class="micon"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="m8.6 7.8-4.2 4.2 4.2 4.2M15.4 7.8l4.2 4.2-4.2 4.2M13.4 6l-2.8 12"/></svg></span>
         <div><div>JSON técnico</div><div class="mdesc">Resumo da sessão para integração</div></div>
       </button>
     </div>
@@ -1429,7 +1516,7 @@ function testVoice() {
   fetch("/api/voice/test", {
     method:"POST",
     headers:{"Content-Type":"application/json"},
-    body: JSON.stringify({message: "Olá, este é o feedback de voz do SeeMove."})
+    body: JSON.stringify({message: "Olá, este é o feedback de voz do Guia Move."})
   });
 }
 
@@ -1578,7 +1665,7 @@ loadVoiceSettings();
   keyLight.position.set(3,6,4); keyLight.castShadow = true;
   keyLight.shadow.mapSize.set(1024,1024);
   scene.add(keyLight);
-  const rimLight = new THREE.DirectionalLight(0x1fcc8a, 0.3);
+  const rimLight = new THREE.DirectionalLight(0x1BAEEE, 0.35);
   rimLight.position.set(-3,2.5,-3); scene.add(rimLight);
 
   // Piso com um "poço de luz" radial sob o boneco (centro mais claro,
@@ -1608,13 +1695,12 @@ loadVoiceSettings();
   floor.rotation.x = -Math.PI/2; floor.receiveShadow = true;
   scene.add(floor);
 
-  // Anel fino na cor de destaque do app (mesmo verde usado no resto do
-  // dashboard) marcando uma "área de exercício" — amarra visualmente a
-  // cena 3D ao resto da interface em vez de ficar um azul isolado.
+  // Anel fino no azul-céu da marca (o mesmo das ondas da logo) marcando uma
+  // "área de exercício" — amarra visualmente a cena 3D ao resto da interface.
   const stageRing = new THREE.Mesh(
     new THREE.RingGeometry(1.08, 1.1, 64),
     new THREE.MeshBasicMaterial({
-      color: 0x1fcc8a, transparent: true, opacity: .3, side: THREE.DoubleSide,
+      color: 0x1BAEEE, transparent: true, opacity: .4, side: THREE.DoubleSide,
     })
   );
   stageRing.rotation.x = -Math.PI/2; stageRing.position.y = 0.002;
@@ -1623,7 +1709,7 @@ loadVoiceSettings();
   const M = {
     body:  new THREE.MeshStandardMaterial({color:0x3d7fd6, roughness:.5, metalness:.05}),
     head:  new THREE.MeshStandardMaterial({color:0x5aa3f0, roughness:.5, metalness:.03}),
-    joint: new THREE.MeshStandardMaterial({color:0x1fcc8a, roughness:.35, metalness:.1, emissive:0x0c4d34, emissiveIntensity:.4}),
+    joint: new THREE.MeshStandardMaterial({color:0x1BAEEE, roughness:.35, metalness:.1, emissive:0x0A5F85, emissiveIntensity:.4}),
     limb:  new THREE.MeshStandardMaterial({color:0x2e6bb8, roughness:.55, metalness:.05}),
     warn:  new THREE.MeshStandardMaterial({color:0xf5a623, roughness:.3, emissive:0xf5a623, emissiveIntensity:.35}),
   };
@@ -1931,6 +2017,7 @@ loadVoiceSettings();
       const k = alphaFor(dtMs, STALE_TAU_MS);
       for (const b of bones) b.group.quaternion.slerp(_identityQ, k);
       shoulderRollTarget = headRollTarget = headYawTarget = 0;
+      posTarget.rootX = 0;                       // ninguém no quadro: volta pro centro do cenário
       shoulderRollC += (0 - shoulderRollC) * k; headRollC += (0 - headRollC) * k; headYawC += (0 - headYawC) * k;
       shoulderPivot.quaternion.setFromAxisAngle(_zAxis, shoulderRollC);
       head.rotation.set(0, headYawC, headRollC);
@@ -1969,6 +2056,35 @@ loadVoiceSettings();
   // o tempo todo. Vértices da geometria pré-extraídos uma vez; por frame só
   // multiplica pela matriz mundial de cada pé (~500 vértices x 2).
   const FOOT_OFFSET = 0.005;
+
+  // Posição do boneco no cenário, além da altura (Y). Antes o quadril ficava PRESO no
+  // centro (x = z = 0) e o boneco só copiava ÂNGULOS dos ossos — então o agachamento
+  // empurrava os pés pra frente (o quadril não podia recuar) e andar/dar um passo pro
+  // lado não movia o tronco (ele "flutuava"). Duas correções independentes; dá pra
+  // desligar cada uma na hora, sem recarregar, pelo console do navegador
+  // (ex.: __rigOpts.plantFeet = false), ou trocando true por false aqui.
+  //   followLateral: acompanha o lado (x) da pessoa no quadro, na escala da largura do
+  //                  corpo (perto ou longe da câmera, andar 1 corpo pro lado = 1 corpo).
+  //   plantFeet:     os pés que estão no chão ficam parados em profundidade (z): quando
+  //                  os joelhos dobram o quadril recua, em vez de os pés escorregarem.
+  const RIG_OPTS = {followLateral: true, plantFeet: true};
+  window.__rigOpts = RIG_OPTS;
+  const FOOT_CONTACT_EPS = 0.06;        // pé a até isso do mais baixo conta como "no chão"
+  const AVATAR_BODY_W = 0.33;           // largura do corpo do boneco (média ombros .44 / quadril .22)
+  const FALLBACK_WORLD_PER_IMG = 2.2;   // escala mundo/imagem quando ombros/quadril não aparecem
+  const LATERAL_MAX = 1.6;              // até onde vai pro lado (o piso tem raio 2.6)
+  const LATERAL_TAU_MS = 120;
+  const ROOT_Z_TAU_MS = 35;             // igual ao da altura (ROOT_TAU_MS): 60 deixava os pés atrasados nas descidas rápidas
+  // Âncora dos pés (z): acompanha onde os pés estão SÓ com a perna esticada (peso 1 acima
+  // de KNEE_STRAIGHT graus, 0 abaixo de KNEE_FREE); com o joelho dobrado ela congela, e é
+  // essa posição congelada que os pés seguram durante o agachamento.
+  const KNEE_STRAIGHT = 176, KNEE_FREE = 150, ANCHOR_TAU_MS = 500;
+  // Âncora inicial (e após reset): onde os pés ficam em relação ao quadril com o boneco em
+  // repouso (ossos sem rotação). NÃO pode ser "onde estiverem no primeiro quadro": se esse
+  // quadro já fosse de alguém agachado, a âncora nasceria errada e os pés não seriam plantados.
+  root.updateWorldMatrix(true, true);
+  const STAND_FOOT_Z = (lFT.matrixWorld.elements[14] + rFT.matrixWorld.elements[14]) / 2 - root.position.z;
+  let plantAnchor = null;
   const _footVerts = (mesh) => {
     const a = mesh.geometry.attributes.position, out = [];
     for (let i = 0; i < a.count; i++) out.push(new THREE.Vector3(a.getX(i), a.getY(i), a.getZ(i)));
@@ -1982,8 +2098,9 @@ loadVoiceSettings();
     for (const v of verts) { _tmpV.copy(v).applyMatrix4(mesh.matrixWorld); if (_tmpV.y < m) m = _tmpV.y; }
     return m;
   }
-  const posState = {rootY:0}, posTarget = {rootY:0};
+  const posState = {rootY:0, rootX:0, rootZ:0}, posTarget = {rootY:0, rootX:0, rootZ:0};
   function lerp(a,b,t){ return a+(b-a)*t; }
+  const smoothStep = v => { v = Math.max(0, Math.min(1, v)); return v * v * (3 - 2 * v); };
   window.__footY = () => Math.min(lowestY(lFT, _vertsL), lowestY(rFT, _vertsR));   // diagnóstico
   // Diagnóstico: ângulo 3D do joelho do boneco (graus, 180 = perna esticada)
   const _kv = [new THREE.Vector3(), new THREE.Vector3(), new THREE.Vector3()];
@@ -1995,6 +2112,12 @@ loadVoiceSettings();
     return Math.acos(THREE.MathUtils.clamp(a.dot(b), -1, 1)) * 180 / Math.PI;
   }
   window.__kneeAngles = () => [_kneeAngle(lUL, lLL), _kneeAngle(rUL, rLL)];
+  // Diagnóstico: posição mundial (x, z) do quadril e dos dois pés — pra conferir se os pés ficam plantados.
+  window.__feetXZ = () => {
+    root.updateWorldMatrix(true, true);
+    const e = m => [+m.matrixWorld.elements[12].toFixed(3), +m.matrixWorld.elements[14].toFixed(3)];
+    return {root: [+root.position.x.toFixed(3), +root.position.z.toFixed(3)], l: e(lFT), r: e(rFT)};
+  };
   // Diagnóstico/testes: avança a pose um passo SEM depender do requestAnimationFrame
   // (que o navegador pausa com a aba/painel oculto).
   window.__stepPose = (dtMs = 33) => { applyBones(dtMs); applyRootPosition(dtMs); };
@@ -2003,7 +2126,8 @@ loadVoiceSettings();
     // (posState.rootY) — o quanto falta pro pé mais baixo tocar o chão é
     // exatamente esse erro residual, somado ao offset já aplicado.
     root.updateWorldMatrix(true, true);
-    const lowestFootY = Math.min(lowestY(lFT, _vertsL), lowestY(rFT, _vertsR));
+    const yL = lowestY(lFT, _vertsL), yR = lowestY(rFT, _vertsR);
+    const lowestFootY = Math.min(yL, yR);
     posTarget.rootY = posState.rootY + (FOOT_OFFSET - lowestFootY);
     // 0.12 por quadro fazia a raiz seguir o alvo com constante de tempo de
     // ~0.3s: nas descidas o quadril ficava pra trás das pernas (pé
@@ -2011,6 +2135,32 @@ loadVoiceSettings();
     // acompanha quase no mesmo quadro, ainda com um mínimo de suavização.
     posState.rootY = lerp(posState.rootY, posTarget.rootY, alphaFor(dtMs, ROOT_TAU_MS));
     root.position.y = 1.0 + posState.rootY;
+
+    // Lado (x): segue o alvo calculado em mapSkeleton3D() a partir da posição da pessoa.
+    posState.rootX = lerp(posState.rootX, posTarget.rootX, alphaFor(dtMs, LATERAL_TAU_MS));
+    root.position.x = posState.rootX;
+
+    // Pés plantados em profundidade (z). O Z que o boneco usa é INFERIDO (encurtamento
+    // dos ossos), e o quadril não tinha como recuar: no agachamento a coxa vai pra frente
+    // e quem andava eram os PÉS. Aqui o z do quadril é ajustado pra que os pés que estão
+    // no chão (o pé levantado não conta) fiquem onde estavam com a perna esticada.
+    // footLocalZ = z dos pés em relação ao quadril; plantAnchor = esse valor "em pé".
+    if (RIG_OPTS.plantFeet) {
+      let n = 0, zSum = 0;
+      if (yL <= lowestFootY + FOOT_CONTACT_EPS) { zSum += lFT.matrixWorld.elements[14]; n++; }
+      if (yR <= lowestFootY + FOOT_CONTACT_EPS) { zSum += rFT.matrixWorld.elements[14]; n++; }
+      const footLocalZ = zSum / n - root.position.z;
+      const kn = Math.min(_kneeAngle(lUL, lLL), _kneeAngle(rUL, rLL));   // joelho mais dobrado (180 = reto)
+      const w = smoothStep((kn - KNEE_FREE) / (KNEE_STRAIGHT - KNEE_FREE));
+      if (plantAnchor === null) plantAnchor = STAND_FOOT_Z;
+      plantAnchor += (footLocalZ - plantAnchor) * (1 - Math.exp(-dtMs * w / ANCHOR_TAU_MS));
+      posTarget.rootZ = plantAnchor - footLocalZ;      // em pé = 0; joelho dobrado = quadril recua
+    } else {
+      posTarget.rootZ = 0;
+      plantAnchor = null;
+    }
+    posState.rootZ = lerp(posState.rootZ, posTarget.rootZ, alphaFor(dtMs, ROOT_Z_TAU_MS));
+    root.position.z = posState.rootZ;
   }
 
   const _dU = new THREE.Vector3(), _dL = new THREE.Vector3(), _dS = new THREE.Vector3();
@@ -2078,6 +2228,14 @@ loadVoiceSettings();
     _bodyW = widths.length ? widths.reduce((x, y) => x + y, 0) / widths.length : 0;
     _lastPoseTs = performance.now();
 
+    // Lado (x): o boneco acompanha onde a pessoa está no quadro (meio do quadril). Escala pela
+    // largura do corpo, não pela imagem — assim andar 1 corpo pro lado move 1 corpo.
+    if (!RIG_OPTS.followLateral) posTarget.rootX = 0;
+    else if (midHip) {
+      const worldPerImg = _bodyW > 0.03 ? AVATAR_BODY_W / _bodyW : FALLBACK_WORLD_PER_IMG;
+      posTarget.rootX = Math.max(-LATERAL_MAX, Math.min(LATERAL_MAX, (midHip.x - 0.5) * _aspect * worldPerImg));
+    }
+
     const hasSpine = landmarkDir(_dS, midHip, midSh, Z_DAMPING, "spine", +1);
     setBoneDir(boneSpine, hasSpine ? _dS : null);
 
@@ -2135,7 +2293,9 @@ loadVoiceSettings();
     shoulderPivot.quaternion.identity();
     head.rotation.set(0, 0, 0);
     posState.rootY = 0; posTarget.rootY = 0;
-    root.position.y = 1.0;
+    posState.rootX = posTarget.rootX = posState.rootZ = posTarget.rootZ = 0;
+    plantAnchor = null;
+    root.position.set(0, 1.0, 0);
   };
 
   function resize(){
@@ -2190,6 +2350,355 @@ loadVoiceSettings();
     renderer.render(scene, camera);
   }
   animate();
+})();
+</script>
+
+<!-- ============================================================
+     STANDBY DO BONECO — dança e faz gestos (tchau etc.) enquanto ninguém está na câmera
+     ============================================================
+     Pensado pra feira: o boneco fica virado pro público e chama a atenção de
+     quem passa. Mesma ideia do standby do motor do Kinect — SÓ o botão 👋
+     liga e desliga — com uma diferença: se alguém aparecer na câmera com o
+     standby ligado, ele desliga sozinho e o boneco passa a seguir a pessoa.
+
+     Nada do boneco em si foi alterado:
+       - Os gestos são gerados como landmarks SINTÉTICOS (mesmo formato dos
+         que chegam do servidor) e entregues à MESMA window.mapSkeleton3D()
+         que o boneco usa com a câmera — então suavização, pés no chão etc.
+         valem igual.
+       - Com o standby ligado, mapSkeleton3D() é embrulhada: a pose real só
+         volta a entrar quando a presença da pessoa é confirmada (senão os
+         dois brigariam pelo boneco durante a confirmação).
+       - Só liga com a sessão parada; se calibração/exercício começar, desliga.
+       - Não depende da câmera: funciona mesmo com ela desconectada.
+     ============================================================ -->
+<script>
+(() => {
+  "use strict";
+
+  const btn   = document.getElementById("btnAvatarStandby");
+  const badge = document.getElementById("avatarStandbyBadge");
+  const panel = document.getElementById("panelBoneco3D");
+  if (!btn || !badge || !panel) return;
+  const feedRig = window.mapSkeleton3D;      // a função original, que o standby também usa
+  if (typeof feedRig !== "function") {
+    // three.js não carregou (sem internet/WebGL): não existe boneco pra animar.
+    btn.disabled = true;
+    btn.title = "Indisponível: o boneco 3D não carregou";
+    return;
+  }
+
+  const TICK_MS = 33;                        // ~30 poses sintéticas por segundo
+  // "Chegou alguém": a pessoa precisa ficar detectada por PRESENCE_CONFIRM_MS
+  // seguidos; piscadas de até PRESENCE_GAP_MS não zeram a contagem. Evita que
+  // um falso positivo de um quadro só (reflexo, cartaz) tire o boneco do standby.
+  const PRESENCE_CONFIRM_MS = 500;
+  const PRESENCE_GAP_MS     = 250;
+  const KEY_POINTS   = ["nose", "left_shoulder", "right_shoulder", "left_hip", "right_hip"];
+  const KEY_MIN_VIS  = 0.5;
+  const KEY_MIN_SEEN = 3;                    // de 5 pontos-chave visíveis = tem uma pessoa
+
+  let active = false, timer = null, t0 = 0, presentSince = 0, lastPresentAt = 0, flashTimer = null;
+
+  // ── Corpo sintético ─────────────────────────────────────────────────────
+  // Unidade = "altura da imagem" (y de 0 a 1; x em alturas, dividido pelo
+  // aspecto na saída) — a mesma que o boneco usa pra ler os landmarks reais.
+  const ASPECT = 4 / 3, DEG = Math.PI / 180;
+  const B = {
+    cx: ASPECT / 2, shHalf: 0.10, hipHalf: 0.06, ankleHalf: 0.075, earHalf: 0.032,
+    torso: 0.23, thigh: 0.19, shin: 0.19, ankleY: 0.88, arm1: 0.15, arm2: 0.13,
+  };
+  const clamp01 = v => Math.max(0, Math.min(1, v));
+  const smooth  = v => { v = clamp01(v); return v * v * (3 - 2 * v); };
+  const step    = (u, a, b) => smooth((u - a) / (b - a));          // 0→1 entre a e b
+  const mix     = (a, b, k) => a + (b - a) * k;
+
+  // Braço = ângulos a1 (ombro→cotovelo) e a2 (cotovelo→pulso) medidos a partir de
+  // "reto pra baixo", positivo pra fora do corpo (180 = reto pra cima); f1/f2 =
+  // encurtamento visto de frente (1 = no plano da imagem, ~0.3 = apontando pra câmera).
+  const arm = (a1, a2, f1 = 1, f2 = 1) => ({a1, a2, f1, f2});
+  // Perna: ax = quanto o tornozelo anda pra DIREITA da imagem (passo/chute); lift = joelho
+  // levantado (0 = pé no chão, 1 = coxa quase na horizontal).
+  const leg = (ax = 0, lift = 0) => ({ax, lift});
+  // Braço solto com o cotovelo levemente dobrado pra frente (f2 < 1): mais natural que reto.
+  const restArm = () => arm(9, 12, 1, 0.8);
+  // Pose = tudo que muda: sq = agachamento (0-1, os dois joelhos), hx = quadril pro lado,
+  // lean = tronco pro lado (relativo ao quadril), sh = ombros inclinados (>0: direito mais
+  // alto), roll = cabeça inclinada, braços e pernas.
+  const rest = () => ({sq: 0, hx: 0, lean: 0, sh: 0, roll: 0, armL: restArm(), armR: restArm(), legL: leg(), legR: leg()});
+
+  const mixArm = (a, b, k) => arm(mix(a.a1, b.a1, k), mix(a.a2, b.a2, k), mix(a.f1, b.f1, k), mix(a.f2, b.f2, k));
+  const mixLeg = (a, b, k) => leg(mix(a.ax, b.ax, k), mix(a.lift, b.lift, k));
+  const mixPose = (A, C, k) => ({
+    sq: mix(A.sq, C.sq, k), hx: mix(A.hx, C.hx, k), lean: mix(A.lean, C.lean, k), sh: mix(A.sh, C.sh, k),
+    roll: mix(A.roll, C.roll, k), armL: mixArm(A.armL, C.armL, k), armR: mixArm(A.armR, C.armR, k),
+    legL: mixLeg(A.legL, C.legL, k), legR: mixLeg(A.legR, C.legR, k),
+  });
+
+  function armPoints(s, side, A) {
+    const d1 = [side * Math.sin(A.a1 * DEG), Math.cos(A.a1 * DEG)];
+    const d2 = [side * Math.sin(A.a2 * DEG), Math.cos(A.a2 * DEG)];
+    const e = [s[0] + d1[0] * B.arm1 * A.f1, s[1] + d1[1] * B.arm1 * A.f1];
+    return {e, w: [e[0] + d2[0] * B.arm2 * A.f2, e[1] + d2[1] * B.arm2 * A.f2]};
+  }
+
+  // Pose (P) → lista de landmarks no formato do servidor. sq = profundidade do
+  // agachamento (0-1): as pernas são um modelo LATERAL (coxa/canela inclinadas pra
+  // frente) visto de FRENTE — é assim que a câmera "vê" um agachamento: o quadril
+  // desce e a coxa encurta, que é o que o boneco lê. Os tornozelos ficam parados na
+  // imagem (pé plantado) enquanto o quadril balança por cima; perna levantada (lift)
+  // sobe o joelho e deixa a canela pendurada.
+  function build(P) {
+    const al = P.sq * 30 * DEG, be = P.sq * 70 * DEG;
+    const kneeYp = B.ankleY - B.shin * Math.cos(al);              // joelho com o pé no chão
+    const hipY = kneeYp - B.thigh * Math.cos(be);
+    const hcx = B.cx + P.hx;                                      // centro do quadril
+    const shY = hipY - B.torso * Math.cos(P.sq * 25 * DEG);       // tronco inclina no agachamento
+    const shx = hcx + P.lean;                                     // balanço lateral do tronco
+    const shDy = Math.tan(P.sh) * B.shHalf;                       // sh > 0: ombro direito mais alto
+    const ls = [shx - B.shHalf, shY + shDy], rs = [shx + B.shHalf, shY - shDy];
+    const earY = shY - 0.115, earDy = Math.tan(P.sh + P.roll) * B.earHalf;
+    const L = armPoints(ls, -1, P.armL), R = armPoints(rs, +1, P.armR);
+    const legPts = (side, Lg) => {
+      const hip = [hcx + side * B.hipHalf, hipY];
+      const kneeYl = hipY + B.thigh * Math.cos(Lg.lift * 65 * DEG);         // levantada: coxa pra frente
+      const ankleYl = kneeYl + B.shin * Math.cos(Lg.lift * 25 * DEG);       // canela pendurada
+      const ankle = [B.cx + side * B.ankleHalf + Lg.ax, mix(B.ankleY, ankleYl, Lg.lift)];
+      const knee = [(hip[0] + ankle[0]) / 2 + side * (0.025 * P.sq + 0.01 * Lg.lift), mix(kneeYp, kneeYl, Lg.lift)];
+      return {hip, knee, ankle};
+    };
+    const LL = legPts(-1, P.legL), RL = legPts(+1, P.legR);
+    const pts = {
+      nose: [shx, earY + 0.015],
+      left_ear: [shx - B.earHalf, earY + earDy], right_ear: [shx + B.earHalf, earY - earDy],
+      left_shoulder: ls, right_shoulder: rs,
+      left_elbow: L.e, right_elbow: R.e, left_wrist: L.w, right_wrist: R.w,
+      left_hip: LL.hip, right_hip: RL.hip, left_knee: LL.knee, right_knee: RL.knee,
+      left_ankle: LL.ankle, right_ankle: RL.ankle,
+    };
+    return Object.entries(pts).map(([name, [x, y]]) => ({name, x: x / ASPECT, y, z: 0, visibility: 0.99}));
+  }
+
+  // ── Gestos e danças ─────────────────────────────────────────────────────
+  // Cada um recebe u = segundos desde o começo do segmento e t = tempo global. As danças
+  // usam t pra seguir UMA batida só (BPM): trocar de uma pra outra não perde o ritmo.
+  // Um segmento não precisa terminar parado: a passagem pro próximo é uma mistura
+  // (crossfade), então o boneco vai de um movimento pro outro sem "travar" no meio.
+  const BPM = 110, D = 60 / BPM, OMEGA = 2 * Math.PI * BPM / 60;
+  const beat = t => 0.5 + 0.5 * Math.cos(t * OMEGA);              // 1 na batida, 0 no contratempo
+
+  function gWave(u, t, side) {                                     // 3.8 s — "tchau"
+    const P = rest();
+    const k  = Math.min(step(u, 0, 0.55), 1 - step(u, 3.1, 3.8));  // levanta / abaixa o braço
+    const sw = step(u, 0.4, 0.8) * (1 - step(u, 2.8, 3.2));        // só balança com o braço no alto
+    // o antebraço não é um seno perfeito (a frequência oscila um pouco) e o braço acompanha atrasado
+    const wob = Math.sin(u * 12.5 + 0.6 * Math.sin(u * 1.7));
+    const A = arm(mix(9, 108, k) + 4 * Math.sin(u * 8.1 - 0.9) * sw,
+                  mix(12, 182, k) + (26 + 6 * Math.sin(u * 2.3)) * wob * sw, 1, mix(0.8, 1, k));
+    if (side > 0) P.armR = A; else P.armL = A;
+    P.lean = side * 0.012 * k; P.roll = side * 0.07 * k; P.sh = side * 0.03 * k;
+    P.hx = 0.012 * Math.sin(u * 3.1) * sw;                         // o corpo balança junto
+    return P;
+  }
+  function gInvite(u) {                                            // 3.6 s — braços abertos chamando: "venha!"
+    const P = rest();
+    const k  = Math.min(step(u, 0, 0.6), 1 - step(u, 3.0, 3.6));   // abre / fecha os braços
+    const sw = step(u, 0.8, 1.2) * (1 - step(u, 2.5, 2.9));        // só chama com os braços abertos
+    const curl = 0.5 - 0.5 * Math.cos(u * 8);                      // 0→1→0: os antebraços sobem e voltam
+    P.armL = arm(mix(9, 80, k), mix(12, 80, k) + 80 * curl * sw);
+    P.armR = arm(mix(9, 80, k), mix(12, 80, k) + 80 * curl * sw);
+    P.sh = 0.03 * Math.sin(u * 4) * k;                             // leve balanço dos ombros
+    return P;
+  }
+  function gCheer(u) {                                             // 2.6 s — braços pra cima, "olha aqui!"
+    const P = rest();
+    const k = Math.min(step(u, 0, 0.5), 1 - step(u, 2.0, 2.6));
+    const sw = Math.sin(u * 10);
+    P.armR = arm(mix(9, 150, k) + 5 * sw * k, mix(12, 168, k) + 8 * sw * k);
+    P.armL = arm(mix(9, 150, k) - 5 * sw * k, mix(12, 168, k) - 8 * sw * k);
+    P.sq = 0.4 * k * (0.5 - 0.5 * Math.cos(u * 8));                // quica com os joelhos
+    return P;
+  }
+  function gSquat(u) {                                             // 5.8 s — dois agachamentos (o exercício do projeto)
+    const P = rest();
+    const ka = Math.min(step(u, 0, 0.6), 1 - step(u, 5.0, 5.6));   // braços à frente
+    P.sq = [0.8, 3.1].reduce((s, t0) => s + step(u, t0, t0 + 1.0) - step(u, t0 + 1.25, t0 + 2.25), 0);
+    P.armL = arm(6, 6, mix(1, 0.3, ka), mix(1, 0.3, ka));
+    P.armR = arm(6, 6, mix(1, 0.3, ka), mix(1, 0.3, ka));
+    return P;
+  }
+  function gLoose(u, t) {                                          // descanso solto: braços balançando, quadril molengo
+    const P = rest();
+    P.armL = arm(12 + 6 * Math.sin(t * 1.3), 14 + 10 * Math.sin(t * 1.3 - 0.9), 1, 0.78);
+    P.armR = arm(12 + 6 * Math.sin(t * 1.3 + 2.4), 14 + 10 * Math.sin(t * 1.3 + 1.5), 1, 0.78);
+    P.hx = 0.02 * Math.sin(t * 0.8); P.lean = -0.01 * Math.sin(t * 0.8);
+    return P;
+  }
+
+  function dDisco(u, t) {                                          // 12 batidas — aponta pro alto, mão na cintura, troca de lado
+    const P = rest(), ph = t * OMEGA, bt = beat(t);
+    const s = 1 - 2 * step(u, 4 * D - 0.3, 4 * D + 0.3) + 2 * step(u, 8 * D - 0.3, 8 * D + 0.3);   // +1 direita / -1 esquerda
+    const point = arm(150 + 8 * bt, 165 + 6 * bt), hip = arm(44, -40);
+    P.armR = mixArm(hip, point, (1 + s) / 2); P.armL = mixArm(hip, point, (1 - s) / 2);
+    P.sq = 0.4 * bt;                                               // joelhos dobram na batida
+    P.hx = 0.028 * Math.sin(ph / 2); P.lean = 0.02 * Math.sin(ph / 2 + 1.2);
+    P.sh = s * 0.05; P.roll = s * 0.09;
+    return P;
+  }
+  function dHandsUp(u, t) {                                        // 8 batidas — mãos pro alto balançando, como em show
+    const P = rest(), ph = t * OMEGA, sw = Math.sin(ph / 2);
+    P.armR = arm(156 + 13 * sw, 172 + 12 * Math.sin(ph / 2 - 0.9));
+    P.armL = arm(156 - 13 * sw, 172 - 12 * Math.sin(ph / 2 - 0.9));
+    P.sq = 0.38 * beat(t);
+    P.hx = -0.03 * sw; P.lean = 0.02 * Math.sin(ph / 2 + 0.5);
+    P.sh = 0.06 * sw; P.roll = 0.07 * sw;
+    return P;
+  }
+  function dMarch(u, t) {                                          // 8 batidas — marchinha: um joelho sobe por batida, braços ao contrário
+    const P = rest(), ph = t * OMEGA, sl = Math.sin(ph / 2);
+    const lU = Math.max(0, sl), rU = Math.max(0, -sl);
+    P.legL = leg(0, 0.95 * lU); P.legR = leg(0, 0.95 * rU);
+    P.armL = arm(24, 10 + 105 * rU); P.armR = arm(24, 10 + 105 * lU);
+    P.hx = 0.015 * sl; P.lean = 0.012 * Math.sin(ph / 2 + 1); P.sh = 0.05 * sl; P.roll = 0.05 * sl;
+    return P;
+  }
+  function dClap(u, t) {                                           // 8 batidas — palma em cima da cabeça no tempo forte
+    const P = rest(), ph = t * OMEGA, bt = beat(t), c = bt * bt;
+    P.armR = arm(mix(158, 170, c), mix(176, 236, c)); P.armL = arm(mix(158, 170, c), mix(176, 236, c));
+    P.sq = 0.36 * bt; P.roll = 0.05 * Math.sin(ph / 2); P.hx = 0.012 * Math.sin(ph / 2);
+    return P;
+  }
+  function dShimmy(u, t) {                                         // 6 batidas — mãos no peito, ombros tremendo
+    const P = rest(), ph = t * OMEGA, sh = Math.sin(ph * 2);
+    P.armL = arm(30, -72); P.armR = arm(30, -72);
+    P.sh = 0.12 * sh; P.roll = -0.05 * sh; P.lean = 0.01 * Math.sin(ph); P.sq = 0.3 * beat(t);
+    return P;
+  }
+  function dHipSway(u, t) {                                        // 10 batidas — quadril pra um lado, ombros pro outro, braços soltos
+    const P = rest(), ph = t * OMEGA, sw = Math.sin(ph / 2);
+    P.hx = 0.05 * sw; P.lean = -0.035 * sw; P.sh = -0.07 * sw; P.roll = 0.08 * sw;
+    P.armR = arm(38 + 22 * Math.sin(ph / 2 + 2.2), 20 + 46 * Math.sin(ph / 2 + 1.2));
+    P.armL = arm(38 - 22 * Math.sin(ph / 2 + 2.2), 20 - 46 * Math.sin(ph / 2 + 1.2));
+    P.sq = 0.34 * (0.5 + 0.5 * Math.cos(ph));                      // joelhos em molinha
+    return P;
+  }
+
+  const SEGS = [
+    {name: "tchau direita", dur: 3.8,    fn: (u, t) => gWave(u, t, +1)},
+    {name: "disco",         dur: 12 * D, fn: dDisco},
+    {name: "maos pro alto", dur: 8 * D,  fn: dHandsUp},
+    {name: "tchau esquerda", dur: 3.8,   fn: (u, t) => gWave(u, t, -1)},
+    {name: "marcha",        dur: 8 * D,  fn: dMarch},
+    {name: "solto",         dur: 1.6,    fn: gLoose},
+    {name: "palmas",        dur: 8 * D,  fn: dClap},
+    {name: "venha",         dur: 3.6,    fn: gInvite},
+    {name: "ombros",        dur: 6 * D,  fn: dShimmy},
+    {name: "quadril",       dur: 10 * D, fn: dHipSway},
+    {name: "olha aqui",     dur: 2.6,    fn: gCheer},
+    {name: "agachamento",   dur: 5.8,    fn: gSquat},
+    {name: "solto",         dur: 1.6,    fn: gLoose},
+  ];
+  let acc = 0;
+  for (const s of SEGS) { s.start = acc; acc += s.dur; }
+  const CYCLE = acc;
+  const XFADE = 0.45;                                              // duração da mistura entre segmentos (s)
+
+  function poseAt(t) {
+    const tt = ((t % CYCLE) + CYCLE) % CYCLE;
+    let i = SEGS.findIndex(s => tt < s.start + s.dur);
+    if (i < 0) i = SEGS.length - 1;
+    const s = SEGS[i], next = SEGS[(i + 1) % SEGS.length];
+    const toEnd = s.start + s.dur - tt;
+    const P = s.fn(tt - s.start, t);
+    if (toEnd >= XFADE) return P;
+    // últimos XFADE segundos: mistura com o começo do próximo (u < 0 = "ainda não começou", os gestos aguentam)
+    return mixPose(P, next.fn(tt - (s.start + s.dur), t), smooth(1 - toEnd / XFADE));
+  }
+  // Solto: microbalanço orgânico sempre presente (várias frequências que não batem entre si),
+  // pra ele nunca parecer um boneco parado esperando a vez do próximo gesto.
+  function withGroove(P, t) {
+    P.sh   += 0.02 * Math.sin(t * 1.9) + 0.012 * Math.sin(t * 3.1 + 2);
+    P.roll += 0.03 * Math.sin(t * 1.4 + 1) + 0.015 * Math.sin(t * 2.7);
+    P.lean += 0.006 * Math.sin(t * 0.9) + 0.003 * Math.sin(t * 2.3 + 1);
+    P.hx   += 0.005 * Math.sin(t * 0.7 + 0.5);
+    P.armL.a1 += 1.6 * Math.sin(t * 1.7) + 1.0 * Math.sin(t * 3.3 + 1);
+    P.armL.a2 += 2.4 * Math.sin(t * 1.7 - 0.8);
+    P.armR.a1 += 1.6 * Math.sin(t * 1.7 + 2) + 1.0 * Math.sin(t * 3.1);
+    P.armR.a2 += 2.4 * Math.sin(t * 1.7 + 1.2);
+    return P;
+  }
+
+  // ── Liga / desliga ──────────────────────────────────────────────────────
+  function sessionStopped() {
+    return typeof _currentSessionState === "undefined" || _currentSessionState === "stopped";
+  }
+  function flash(text, ms = 3500) {
+    clearTimeout(flashTimer);
+    badge.textContent = text; badge.classList.add("active");
+    flashTimer = setTimeout(() => { if (!active) badge.classList.remove("active"); }, ms);
+  }
+
+  function tick() {
+    if (!active) return;
+    if (!sessionStopped()) { stop("session"); return; }
+    const t = (performance.now() - t0) / 1000;
+    feedRig({detected: true, image_aspect: ASPECT, knee_valgus_l: 0, knee_valgus_r: 0,
+             raw_landmarks: build(withGroove(poseAt(t), t))});
+  }
+
+  function start() {
+    if (active) return;
+    if (!sessionStopped()) { flash("só com o exercício parado"); return; }
+    active = true; presentSince = 0; lastPresentAt = 0; t0 = performance.now();
+    // Descarta o histórico de comprimentos da pessoa real (o boneco usa pra estimar
+    // profundidade) pra ele não contaminar os gestos — e recomeça do repouso.
+    if (window.reset3DPose) window.reset3DPose();
+    panel.classList.add("avatar-standby");
+    btn.classList.add("on"); btn.setAttribute("aria-pressed", "true");
+    clearTimeout(flashTimer); badge.textContent = "👋 standby"; badge.classList.add("active");
+    timer = setInterval(tick, TICK_MS);
+    tick();
+  }
+
+  function stop(reason) {
+    if (!active) return;
+    active = false; clearInterval(timer); timer = null;
+    panel.classList.remove("avatar-standby");
+    btn.classList.remove("on"); btn.setAttribute("aria-pressed", "false");
+    badge.classList.remove("active");
+    // Gesto interrompido no meio: limpa o histórico dos gestos e recomeça do repouso
+    // (ou direto da pose da pessoa, quando é ela que encerra o standby).
+    if (window.reset3DPose) window.reset3DPose();
+    if (reason === "person") flash("👋 pessoa detectada");
+    else if (reason === "session") flash("standby encerrado");
+  }
+
+  function personPresent(d) {
+    if (!d || !d.detected || !d.raw_landmarks || !d.raw_landmarks.length) return false;
+    let seen = 0;
+    for (const l of d.raw_landmarks) if (KEY_POINTS.includes(l.name) && l.visibility >= KEY_MIN_VIS) seen++;
+    return seen >= KEY_MIN_SEEN;
+  }
+
+  // Com o standby ligado, a pose REAL só serve pra detectar presença; quando a pessoa
+  // é confirmada o standby desliga e este mesmo quadro já vai pro boneco ("vai pra pessoa").
+  window.mapSkeleton3D = function (d) {
+    if (!active) return feedRig(d);
+    const now = performance.now();
+    if (personPresent(d)) {
+      // Buraco maior que PRESENCE_GAP_MS entre dois quadros com pessoa (fluxo de quadros
+      // travou/parou) recomeça a contagem — um quadro solto não confirma presença.
+      if (!presentSince || now - lastPresentAt > PRESENCE_GAP_MS) presentSince = now;
+      lastPresentAt = now;
+      if (now - presentSince >= PRESENCE_CONFIRM_MS) { stop("person"); feedRig(d); }
+    } else if (presentSince && now - lastPresentAt > PRESENCE_GAP_MS) {
+      presentSince = 0;
+    }
+  };
+
+  window.toggleAvatarStandby = () => (active ? stop("button") : start());
+  // Diagnóstico/testes (mesmo espírito de window.__stepPose): gera a pose sintética de um instante.
+  window.__avatarStandby = {isActive: () => active, poseAt, build, withBreath: withGroove, withGroove, CYCLE, ASPECT, SEGS, OMEGA};
 })();
 </script>
 
