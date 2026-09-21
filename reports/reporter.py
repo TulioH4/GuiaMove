@@ -10,7 +10,7 @@ import threading
 import time
 from collections import deque
 from dataclasses import dataclass
-from typing import Deque
+from typing import Deque, Optional
 
 from core.skeleton import SkeletonFrame
 from exercises.base import FeedbackResult, Severity
@@ -44,6 +44,8 @@ class SessionReporter:
     # que cobrem a sessão inteira; só a exportação por frame fica limitada
     # à janela mais recente quando o cap é atingido.
     RECORDS_MAX = 200_000
+    # Intervalo entre dois quadros monitorados acima do qual conta como pausa (não entra na duração).
+    GAP_MAX_S = 2.0
 
     def __init__(self):
         self._records: Deque[SkeletonRecord] = deque(maxlen=self.RECORDS_MAX)
@@ -70,6 +72,28 @@ class SessionReporter:
         self._sum_vr:       float = 0.0
         self._detected_n:   int   = 0
         self._ok_n:         int   = 0
+        # Tempo MONITORADO (soma dos intervalos entre quadros seguidos); pausas e câmera parada não entram.
+        self._active_s:       float = 0.0
+        self._last_frame_ts:  Optional[float] = None
+
+    def reset(self):
+        """Nova rodada: zera registros, contadores e cronômetro (o exercício escolhido continua)."""
+        with self._records_lock:
+            self._records.clear()
+        self._corrections   = 0
+        self._session_start = time.time()
+        self._last_ok       = True
+        self._total_n       = 0
+        self._sum_conf      = 0.0
+        self._sum_sh        = 0.0
+        self._sum_hip       = 0.0
+        self._sum_trunk     = 0.0
+        self._sum_vl        = 0.0
+        self._sum_vr        = 0.0
+        self._detected_n    = 0
+        self._ok_n          = 0
+        self._active_s      = 0.0
+        self._last_frame_ts = None
 
     def set_exercise(self, name: str):
         self._exercise_name = name
@@ -107,6 +131,11 @@ class SessionReporter:
             self._records.append(rec)
         self._total_n += 1
 
+        ts = frame.timestamp
+        if self._last_frame_ts is not None and 0 < ts - self._last_frame_ts < self.GAP_MAX_S:
+            self._active_s += ts - self._last_frame_ts
+        self._last_frame_ts = ts
+
         # Contadores incrementais
         if frame.detected:
             self._detected_n   += 1
@@ -138,7 +167,7 @@ class SessionReporter:
         # Antes do primeiro quadro monitorado ainda não há sessão: duração zero. O relógio só começa em
         # record_skeleton(); sem isto o painel mostrava o tempo desde a abertura do programa e depois
         # "voltava" a 00:00 ao apertar Iniciar.
-        elapsed = int(time.time() - self._session_start) if self._total_n else 0
+        elapsed = int(self._active_s) if self._total_n else 0
         m, s    = divmod(elapsed, 60)
 
         return {

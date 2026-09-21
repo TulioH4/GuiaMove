@@ -119,6 +119,8 @@ class SquatExercise(Exercise):
         self._movement_state      = self.STATE_STANDING
         self._candidate_state     = None
         self._candidate_frames    = 0
+        # Depois do estouro do tempo (MOVEMENT_TIMEOUT_S) só volta a acompanhar quando a pessoa ficar em pé.
+        self._await_upright       = False
         self._movement_started_at = None
 
         # `repetitions` só conta ciclos com cadência "boa" — é o número
@@ -179,6 +181,7 @@ class SquatExercise(Exercise):
             self._candidate_state, self._candidate_frames = None, 0
             self._movement_started_at = None
             self._cycle_worst = None
+            self._await_upright = False
             return err
 
         angle = self._smooth_angle(self._average_knee_angle(frame))
@@ -369,6 +372,15 @@ class SquatExercise(Exercise):
             # Timeout de SEGURANÇA — não valida cadência (cada pessoa tem
             # seu ritmo), só evita que o estado fique preso indefinidamente
             # se o movimento for interrompido no meio. Não conta repetição.
+            # Passou do tempo: vale como repetição LENTA demais (a Session fala "não contou, foi devagar demais") e a
+            # pessoa só volta a ser acompanhada depois de ficar em pé. Antes o estado voltava a "em pé" com ela ainda
+            # agachada, a descida era detectada de novo e a subida contava 1 repetição "boa" com duração errada.
+            self.last_rep_duration_s = now - self._movement_started_at
+            self.last_rep_min_angle  = self._current_min_angle
+            self.last_rep_cadence    = "lenta_demais"
+            self.last_rep_issue      = self._cycle_worst.message if self._cycle_worst else None
+            self.rejected_reps      += 1
+            self._await_upright      = True
             self._cycle_worst = None
             self._movement_state = self.STATE_STANDING
             self._candidate_state, self._candidate_frames = None, 0
@@ -381,6 +393,12 @@ class SquatExercise(Exercise):
                 self._current_min_angle = angle
 
         if self._movement_state == self.STATE_STANDING:
+            if self._await_upright:
+                if angle >= self.STAND_EXIT_ANGLE:
+                    self._await_upright = False
+                self._candidate_state, self._candidate_frames = None, 0
+                self._current_min_angle = 180.0
+                return False
             if angle < self.DESCENT_ENTER_ANGLE:
                 # Já começa a acompanhar o mínimo AQUI, enquanto o
                 # candidato a "descendo" ainda está sendo confirmado (os

@@ -5,7 +5,7 @@
   </picture>
 </p>
 
-<h3 align="center">O coach de exercícios que enxerga por você.</h3>
+<h3 align="center">O treinador de exercícios que enxerga por você.</h3>
 
 <p align="center">
   Exercício guiado por voz para pessoas cegas ou com baixa visão.<br>
@@ -37,12 +37,14 @@
 
 ## O que é
 
-**GuiaMove** (chamado de *SeeMove* no código e nos atalhos) é um coach de exercícios pensado para **pessoas cegas ou com baixa visão**. Uma câmera (Kinect v1 ou webcam) acompanha o corpo, o **MediaPipe Pose** localiza as articulações e o sistema **fala** o que corrigir, como "joelho esquerdo para dentro" ou "tronco inclinado para a direita", sem que a pessoa precise olhar para tela nenhuma.
+**GuiaMove** é um treinador de exercícios pensado para **pessoas cegas ou com baixa visão**. Uma câmera (Kinect v1 ou webcam) acompanha o corpo, o **MediaPipe Pose** localiza as articulações e o sistema **fala** o que corrigir, como "joelho esquerdo para dentro" ou "tronco inclinado para a direita", sem que a pessoa precise olhar para tela nenhuma.
 
 - **Guiado por voz:** o sistema explica o exercício, corrige a postura e conta as repetições em voz alta; dá para controlar tudo falando.
 - **Sem nada no corpo:** sem sensores de pressão, Wii Balance Board ou Arduino. Só uma câmera.
 - **Painel para quem acompanha:** dashboard no navegador com o vídeo, um **boneco 3D** que espelha o movimento, indicadores de desvio postural e o histórico do que foi falado.
-- **Relatório da sessão** em CSV e em página HTML (com a logo, pronta para imprimir), para acompanhar a evolução.
+- **Relatório da sessão** em CSV e em página HTML (com a logo, pronta para imprimir), para acompanhar a evolução. Cada **Iniciar** começa um relatório novo (uma pessoa por vez); **Parar** mantém os números na tela para conferir e baixar.
+- **Avisa quando algo dá errado com a câmera:** se ela parar de enviar imagem, o sistema diz em voz alta, em vez de pedir para a pessoa "se posicionar".
+- **Painel só deste computador:** o servidor escuta apenas em `127.0.0.1` e recusa pedidos vindos de outros sites abertos no mesmo navegador.
 
 ## Como funciona
 
@@ -99,8 +101,8 @@ O modelo `pose_landmarker.task` (~6 MB) já vem em `core/`; se faltar, é baixad
 
 | Situação | Como |
 |---|---|
-| **Kinect v1** (o caso da demonstração) | duplo clique em `Iniciar_SeeMove.bat` |
-| **Webcam** | duplo clique em `Iniciar_SeeMove_Webcam.bat` |
+| **Kinect v1** (o caso da demonstração) | duplo clique em `Iniciar_GuiaMove.bat` |
+| **Webcam** | duplo clique em `Iniciar_GuiaMove_Webcam.bat` |
 | Sem câmera, só para ver o painel e a voz | `python main.py --no-camera` |
 
 O painel abre sozinho em **http://127.0.0.1:5000**. Para encerrar, feche a janela do terminal ou use `Ctrl+C`.
@@ -111,7 +113,7 @@ O Kinect v1 **não aparece como webcam comum** no Windows. Por isso o projeto te
 
 1. Instale o **Kinect for Windows SDK v1.8** e confirme, no Gerenciador de Dispositivos, que Camera e Motor estão no driver *Kinect for Windows* (e **não** em `libusbK`).
 2. Se `kinect_color_bridge.exe` não existir, compile-o com `native/kinect_bridge/build.bat` (precisa do *Visual Studio Build Tools 2022* com o workload de C++).
-3. Rode `python main.py --kinect-sdk`. Se o Kinect ficar entre **1,5 m e 2,5 m** da pessoa, acrescente `--kinect-sdk-depth` para usar a profundidade real. É o que o `Iniciar_SeeMove.bat` faz. Fora dessa faixa a profundidade fica instável e é melhor deixá-la desligada.
+3. Rode `python main.py --kinect-sdk`. Se o Kinect ficar entre **1,5 m e 2,5 m** da pessoa, acrescente `--kinect-sdk-depth` para usar a profundidade real. É o que o `Iniciar_GuiaMove.bat` faz. Fora dessa faixa a profundidade fica instável e é melhor deixá-la desligada.
 
 > [!NOTE]
 > **Ilumine o ambiente.** Em sala escura o Kinect entrega a cor totalmente preta (o infravermelho continua funcionando, mas o MediaPipe precisa da imagem colorida). O sistema percebe e avisa em voz alta: "A imagem da câmera está escura demais".
@@ -160,8 +162,9 @@ Quem não vê a tela também ganha um sinal sonoro: **um toque curto** quando um
 ```text
 .
 ├── main.py                       ponto de entrada (linha de comando)
-├── Iniciar_SeeMove.bat           atalho: Kinect + profundidade
-├── Iniciar_SeeMove_Webcam.bat    atalho: webcam
+├── Iniciar_GuiaMove.bat          atalho: Kinect + profundidade
+├── Iniciar_GuiaMove_Webcam.bat   atalho: webcam
+├── Iniciar_SeeMove*.bat          nomes antigos (só repassam para os dois acima)
 ├── index.html                    página de resumo do projeto (a do QR code)
 ├── assets/                       logo oficial (vetorial e originais) usada no README e na página
 ├── core/

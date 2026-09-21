@@ -1,4 +1,4 @@
-# SeeMove — dependências (versão Kinect + MediaPipe)
+# GuiaMove — dependências (versão Kinect + MediaPipe)
 # pip install -r requirements.txt
 
 # Visão computacional e pose

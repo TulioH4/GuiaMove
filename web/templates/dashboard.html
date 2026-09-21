@@ -730,6 +730,7 @@ class AudioClient {
     this._live = new Set();    // referências às falas em curso (ver speak())
     this._busyUntil = 0;       // estimativa de quando a fala termina (+ folga)
     this._spoken = [];         // {text, t0, t1}: falas recentes, p/ detectar eco
+    this._toneBusyUntil = 0;   // os toques do controle por voz ("ouvi"/"não entendi") também entram no guarda de eco
     this._loadVoice();
   }
   // A troca de voz era ignorada porque o dropdown do dashboard listava as
@@ -869,7 +870,7 @@ class AudioClient {
   // acústico/latência do reconhecedor)? Cobre TODA fala do app — as
   // enviadas pelo servidor também, não só as do controle por voz.
   isBusy() {
-    return Date.now() < this._busyUntil ||
+    return Date.now() < Math.max(this._busyUntil, this._toneBusyUntil) ||
            !!(this.synth && (this.synth.speaking || this.synth.pending));
   }
   // O texto reconhecido parece a própria fala do app captada pelo
@@ -951,6 +952,10 @@ class AudioClient {
       setTimeout(() => this._tone(freq, 0, dur, gain ?? 0.35), delayMs);
       delayMs += (dur + 0.05) * 1000;
     }
+    // Um toque captado pelo microfone (caixa alta perto dele) não pode virar comando nem gerar outro toque.
+    if (pattern === "heard" || pattern === "notheard") {
+      this._toneBusyUntil = Date.now() + delayMs + AudioClient.ECHO_TAIL_MS;
+    }
   }
   stopAll() {
     // Invalida também as falas ainda agendadas (setTimeout de speak()) e
@@ -958,6 +963,7 @@ class AudioClient {
     // logo depois do "parar".
     this._gen++;
     this._busyUntil = 0;
+    this._toneBusyUntil = 0;
     this._spoken.length = 0;
     if (this.synth) this.synth.cancel();
     this._activeOscs.forEach(o => { try { o.stop(); } catch (e) {} });
@@ -1537,7 +1543,7 @@ function downloadReport(fmt) {
 function updateRateVal(el) { document.getElementById("voiceRateVal").textContent = el.value; }
 function updateVolVal(el)  { document.getElementById("voiceVolVal").textContent  = el.value+"%"; }
 
-function saveVoice() {
+function saveVoice(silent = false) {
   const voiceURI = document.getElementById("voiceSelect").value || null;
   const payload = {
     enabled:               document.getElementById("voiceEnabled").checked,
@@ -1551,6 +1557,8 @@ function saveVoice() {
     cooldown_warn_s:       parseFloat(document.getElementById("cooldownWarn").value),
     cooldown_error_s:      parseFloat(document.getElementById("cooldownErr").value),
     confirm_on_correction: document.getElementById("confirmCorrection").checked,
+    // true = veio de um comando de voz, que já confirma sozinho ("Volume aumentado."); o servidor não fala por cima.
+    silent: silent === true,
   };
   audioClient.setPreferredVoice(voiceURI);
   try { localStorage.setItem("seemove_voice_uri", voiceURI || ""); } catch (e) {}
@@ -2800,18 +2808,31 @@ loadVoiceSettings();
   // (até 3 palavras; conversa comprida perto do microfone continua em silêncio) e no máximo 1 a cada 4 s.
   // Dá para desligar na aba Configuração ("Sons ao ouvir comandos"), útil em ambiente barulhento.
   let _ultimoNaoEntendi = 0;
+  // Quebra-ciclo: 3 "não entendi" em 15 s sem nenhum comando entendido no meio = provável ruído ou toque
+  // captado pelo microfone; cala o "não entendi" por 30 s em vez de repetir a cada 4 s.
+  let _naoEntendiRecentes = [];
+  let _naoEntendiMudoAte = 0;
+  let _naoEntendeuAgora = false;
   function sonsDeComandoAtivos() {
     const el = document.getElementById("voiceEarcons");
     return !el || el.checked;
   }
   function sinalOuvi() {
+    _naoEntendiRecentes = [];
     if (sonsDeComandoAtivos()) audioClient.chime("heard");
   }
   function sinalNaoEntendi(texto) {
+    _naoEntendeuAgora = true;
     if (!sonsDeComandoAtivos()) return;
     if (texto.split(" ").filter(Boolean).length > 3) return;
     const agora = Date.now();
-    if (agora - _ultimoNaoEntendi < 4000) return;
+    if (agora - _ultimoNaoEntendi < 4000 || agora < _naoEntendiMudoAte) return;
+    _naoEntendiRecentes = _naoEntendiRecentes.filter(t => agora - t < 15000);
+    _naoEntendiRecentes.push(agora);
+    if (_naoEntendiRecentes.length >= 3) {
+      _naoEntendiMudoAte = agora + 30000;
+      _naoEntendiRecentes = [];
+    }
     _ultimoNaoEntendi = agora;
     audioClient.chime("notheard");
   }
@@ -3033,7 +3054,14 @@ loadVoiceSettings();
   window.interpretarComandoVoz = interpretarComandoVoz;
 
   // ── Interpretador de comandos — já executa as ações reais ────────────────
+  // Envolve o interpretador: se o texto bateu com QUALQUER comando, zera a contagem do quebra-ciclo dos "não entendi".
   function interpretarComandoVoz(texto) {
+    _naoEntendeuAgora = false;
+    interpretarComandoVozInterno(texto);
+    if (!_naoEntendeuAgora) _naoEntendiRecentes = [];
+  }
+
+  function interpretarComandoVozInterno(texto) {
 
     // Volume
     if (texto.includes("aumentar volume") || texto.includes("aumenta o volume") ||
@@ -3167,7 +3195,7 @@ loadVoiceSettings();
     if (!el) return;
     el.value = Math.max(0, Math.min(100, parseInt(el.value) + delta));
     updateVolVal(el);
-    saveVoice();
+    saveVoice(true);
     voiceSpeak(delta > 0 ? "Volume aumentado." : "Volume reduzido.");
   }
 
@@ -3176,7 +3204,7 @@ loadVoiceSettings();
     if (!el) return;
     el.value = Math.max(50, Math.min(300, parseInt(el.value) + delta));
     updateRateVal(el);
-    saveVoice();
+    saveVoice(true);
     voiceSpeak(delta > 0 ? "Falando mais rápido." : "Falando mais devagar.");
   }
 

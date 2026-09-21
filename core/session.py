@@ -1,6 +1,6 @@
 """
 core/session.py
-Loop principal do SeeMove — baseado inteiramente no Kinect + MediaPipe.
+Loop principal do GuiaMove — baseado inteiramente no Kinect + MediaPipe.
 Sem sensores de pressão.
 
 Pipeline em 3 estágios, cada um na sua própria thread, ligados por filas
@@ -70,6 +70,7 @@ CONFIRMATIONS = [
 _WAITING_EXERCISE_MSG = FeedbackResult("Aguardando início do exercício.", False, Severity.OK, "")
 _PAUSED_MSG           = FeedbackResult("Pausado.", False, Severity.OK, "")
 _BRIEFING_MSG         = FeedbackResult("Explicando o movimento.", False, Severity.OK, "")
+_CAMERA_LOST_MSG      = FeedbackResult("A câmera parou de enviar imagem.", False, Severity.WARN, "Câmera sem imagem.")
 
 
 def _put_drop_oldest(q: "queue.Queue", item):
@@ -167,6 +168,14 @@ class Session:
         self._lost_since          = None
         self._last_error_report   = 0.0
         self._last_broadcast_error = 0.0
+        # R1: câmera sem imagem (avisada pelo rastreador). Enquanto durar, ninguém é analisado nem contado.
+        self._camera_lost         = False
+        self._camera_alert_ts     = 0.0
+        # R6: as linhas de acompanhamento do terminal passam por uma fila e uma thread própria.
+        self._console_queue: "queue.Queue" = queue.Queue(maxsize=200)
+        self._console_thread: Optional[threading.Thread] = None
+        self._last_log_key        = None
+        self._last_log_ts         = 0.0
 
     # ── Início / Pausa / Parada de exercício ────────────────────────────────
 
@@ -213,6 +222,7 @@ class Session:
             return
 
         with self._lock:
+            self._begin_session_if_stopped()
             self.exercise         = exercise
             self._ok_frames       = 0
             self._reinforce_count = 0
@@ -305,6 +315,46 @@ class Session:
             self._pending_exercise = None
         self.audio.stop_all()
 
+    def _begin_session_if_stopped(self):
+        """Nova rodada (outra pessoa, ou a mesma recomeçando): quando o exercício COMEÇA de verdade (entra em
+        BRIEFING vindo de STOPPED ou da calibração), o relatório e o cronômetro recomeçam do zero. Antes a aba
+        Sessão e o relatório somavam TODOS os visitantes desde a abertura do programa. Parar — e até rodar a
+        calibração — mantém os números da rodada anterior na tela (dá para ver e baixar o relatório); pausar/
+        retomar não zeram. Chamar com o lock."""
+        if self._state in (FeedbackState.STOPPED, FeedbackState.SETUP):
+            self.reporter.reset()
+            self._session_start = time.time()
+
+    # ── Câmera (R1) ───────────────────────────────────────────────────────
+
+    CAMERA_REMINDER_S = 20.0
+
+    def camera_problem(self, kind: str = "lost"):
+        """Chamado pelo rastreador quando a câmera para de mandar imagem ("lost") ou não abre/encerra
+        ("failed"). Fala na hora e repete a cada CAMERA_REMINDER_S enquanto durar; sem isto o sistema dizia
+        "Posicione-se em frente à câmera" (a causa errada) e só o painel mostrava o erro."""
+        now = time.time()
+        with self._lock:
+            self._camera_lost = True
+            due = now - self._camera_alert_ts >= self.CAMERA_REMINDER_S
+            if due:
+                self._camera_alert_ts = now
+        if due:
+            if kind == "failed":
+                msg = "Não consegui usar a câmera. Peça ajuda a alguém da equipe."
+            else:
+                msg = "A câmera parou de enviar imagem. Peça ajuda a alguém da equipe."
+            self.audio.speak_now(msg, Severity.WARN)
+
+    def camera_ok(self):
+        """A câmera voltou a mandar imagem."""
+        with self._lock:
+            was_lost = self._camera_lost
+            self._camera_lost = False
+            self._camera_alert_ts = 0.0
+        if was_lost:
+            self.audio.speak_now("A câmera voltou a funcionar.", Severity.OK)
+
     # ── Estágio 1: captura → fila (rápido, nunca bloqueia a câmera) ────────
 
     def _enqueue_frame(self, frame: SkeletonFrame):
@@ -353,6 +403,11 @@ class Session:
                 result = _WAITING_EXERCISE_MSG
             elif state == FeedbackState.PAUSED:
                 result = _PAUSED_MSG
+            elif self._camera_lost:
+                # Sem imagem não dá para saber se há alguém: mostra a causa real, não entra nas estatísticas
+                # (hold=True) e a calibração não fala "nenhuma pessoa detectada".
+                result = _CAMERA_LOST_MSG
+                hold   = True
             elif state == FeedbackState.BRIEFING:
                 # Não analisa nem conta repetição durante a explicação
                 # falada do movimento — sem isso, alguém que já começa a se
@@ -392,21 +447,44 @@ class Session:
             if not hold:
                 self._tick(frame, result)
 
-            # Log terminal — inclui result.detail (fase/ângulo/repetições
-            # pro agachamento) pra dar pra diagnosticar pelo terminal sem
-            # precisar instrumentar nada na hora.
-            elapsed = int(now - self._session_start)
-            m, s = divmod(elapsed, 60)
-            det  = "✓" if frame.detected else "✗"
-            conf = f"{frame.metrics.confidence:.0f}%" if frame.detected else "—"
-            sev  = result.severity.value
-            extra = f"  ({result.detail})" if result.detail else ""
-            print(f"  {m:02d}:{s:02d}  [{det}] conf={conf}  "
-                  f"state={self._state.value:<12}  [{sev}] {result.message[:60]}{extra}")
+            self._console_log(now, frame, result)
 
         self._last_result, self._last_summary = result, summary
         if self.web_push:
             _put_drop_oldest(self._render_queue, (frame, result, summary))
+
+    def _console_log(self, now: float, frame: SkeletonFrame, result: FeedbackResult):
+        """Linha de acompanhamento no terminal (com result.detail: fase/ângulo/repetições, para diagnosticar).
+        Só sai quando algo muda (estado, detecção, gravidade ou frase) ou a cada 2 s — antes eram ~10 linhas por
+        segundo, escritas DENTRO do lock da sessão: se o console travasse (texto selecionado no console clássico
+        do Windows), tudo parava, até o Parar. Agora só entra numa fila e uma thread própria imprime."""
+        key = (self._state.value, frame.detected, result.severity.value, result.message)
+        if key == self._last_log_key and now - self._last_log_ts < 2.0:
+            return
+        self._last_log_key, self._last_log_ts = key, now
+        elapsed = int(now - self._session_start)
+        m, s = divmod(elapsed, 60)
+        det  = "✓" if frame.detected else "✗"
+        conf = f"{frame.metrics.confidence:.0f}%" if frame.detected else "—"
+        sev  = result.severity.value
+        extra = f"  ({result.detail})" if result.detail else ""
+        line = (f"  {m:02d}:{s:02d}  [{det}] conf={conf}  "
+                f"state={self._state.value:<12}  [{sev}] {result.message[:60]}{extra}")
+        try:
+            self._console_queue.put_nowait(line)
+        except queue.Full:
+            pass
+
+    def _console_worker(self):
+        while not self._stop_event.is_set():
+            try:
+                line = self._console_queue.get(timeout=0.5)
+            except queue.Empty:
+                continue
+            try:
+                print(line)
+            except Exception:
+                pass
 
     def _holding_through_dropout(self, frame: SkeletonFrame) -> bool:
         """True enquanto a pessoa some por menos de DETECTION_GRACE_S: a
@@ -612,8 +690,12 @@ class Session:
         self._broadcast_thread = threading.Thread(
             target=self._broadcast_loop, daemon=True, name="session-broadcast"
         )
+        self._console_thread = threading.Thread(
+            target=self._console_worker, daemon=True, name="session-console"
+        )
         self._analysis_thread.start()
         self._broadcast_thread.start()
+        self._console_thread.start()
 
         print(f"\n  {'TEMPO':>5}  DET  CONF    ESTADO          FEEDBACK")
         print("  " + "─" * 65)
@@ -626,6 +708,6 @@ class Session:
 
     def stop(self):
         self._stop_event.set()
-        for t in (self._analysis_thread, self._broadcast_thread):
+        for t in (self._analysis_thread, self._broadcast_thread, self._console_thread):
             if t and t.is_alive():
                 t.join(timeout=2.0)

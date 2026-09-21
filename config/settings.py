@@ -1,6 +1,6 @@
 """
 config/settings.py
-Configurações globais do SeeMove — versão Kinect+MediaPipe.
+Configurações globais do GuiaMove — versão Kinect+MediaPipe.
 """
 import os
 from dataclasses import dataclass, field

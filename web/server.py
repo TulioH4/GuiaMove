@@ -1,6 +1,6 @@
 """
 web/server.py
-Servidor Flask + Socket.IO do SeeMove — versão Kinect + MediaPipe.
+Servidor Flask + Socket.IO do GuiaMove — versão Kinect + MediaPipe.
 
 Rotas HTTP:
   GET  /                          Dashboard principal (boneco 3D embutido)
@@ -76,6 +76,49 @@ app.config["SECRET_KEY"] = secrets.token_hex(32)
 # WebSocket de qualquer site caso o servidor um dia deixe de ser
 # localhost-only.
 socketio = SocketIO(app, async_mode="threading")
+
+# ── R9: o painel é só deste computador ───────────────────────────────────────
+_HOSTS_LOCAIS = {"127.0.0.1", "localhost", "[::1]"}
+_CSP = (
+    "default-src 'self'; "
+    "script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com; "
+    "style-src 'self' 'unsafe-inline'; "
+    "img-src 'self' data: blob:; media-src 'self' data: blob:; font-src 'self' data:; "
+    "connect-src 'self' ws://127.0.0.1:* ws://localhost:*; "
+    "object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'"
+)
+
+
+def _host_sem_porta(valor: str) -> str:
+    valor = (valor or "").strip().lower()
+    if valor.startswith("["):                       # IPv6 literal: [::1]:5000
+        return valor.split("]")[0] + "]"
+    return valor.rsplit(":", 1)[0] if ":" in valor else valor
+
+
+@app.before_request
+def _proteger_servidor_local():
+    """Recusa (1) um Host que não seja o do próprio computador (DNS rebinding) e (2) POST/PUT/PATCH/DELETE vindo
+    de OUTRA origem: qualquer página aberta no mesmo navegador poderia mandar Parar/Iniciar. Ferramentas sem
+    Origin (curl, testes) e o próprio painel passam. O Socket.IO já recusa origem externa por conta própria."""
+    if _host_sem_porta(request.host) not in _HOSTS_LOCAIS:
+        return jsonify({"error": "host não permitido"}), 400
+    if request.method in ("POST", "PUT", "PATCH", "DELETE"):
+        origin = request.headers.get("Origin")
+        if origin is not None:
+            from urllib.parse import urlparse
+            if urlparse(origin).netloc.lower() != request.host.lower():
+                return jsonify({"error": "origem não permitida"}), 403
+    return None
+
+
+@app.after_request
+def _cabecalhos_de_seguranca(resp):
+    resp.headers.setdefault("X-Content-Type-Options", "nosniff")
+    resp.headers.setdefault("X-Frame-Options", "DENY")
+    resp.headers.setdefault("Referrer-Policy", "no-referrer")
+    resp.headers.setdefault("Content-Security-Policy", _CSP)
+    return resp
 
 # ── Referências injetadas por main.py ────────────────────────────────────────
 _session  = None
@@ -622,7 +665,9 @@ def set_voice_settings():
     # respeitar o sink remoto quando o dashboard está ativo — senão a
     # confirmação sai sempre pela mesma voz pyttsx3 do servidor, dando a
     # falsa impressão de que a troca de voz no navegador não fez nada.
-    if v.enabled and _session is not None and \
+    # "silent": a mudança veio de um comando de VOZ do usuário ("aumentar volume"), que já confirma por conta
+    # própria — falar isto por cima cortava "Volume aumentado." depois de 3 ms.
+    if v.enabled and _session is not None and not data.get("silent") and \
        ("rate" in data or "volume" in data or "voice_id" in data):
         _session.audio.speak_now("Configuração de voz atualizada.")
 
@@ -710,7 +755,7 @@ def report_csv():
             "feedback":       r.feedback,
             "severity":       r.severity,
         })
-    fname = f"seemove_{time.strftime('%Y%m%d_%H%M%S')}.csv"
+    fname = f"guiamove_{time.strftime('%Y%m%d_%H%M%S')}.csv"
     return Response(
         "\ufeff" + buf.getvalue(), mimetype="text/csv",
         headers={"Content-Disposition": f"attachment; filename={fname}"}

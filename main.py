@@ -1,5 +1,5 @@
 """
-SeeMove — ponto de entrada (versão Kinect + MediaPipe).
+GuiaMove — ponto de entrada (versão Kinect + MediaPipe).
 
 Sem sensores de pressão, sem Wii Balance Board, sem Arduino.
 
@@ -175,6 +175,9 @@ def main():
         settings=settings,
         reporter=reporter,
     )
+    # A câmera que para de mandar imagem (ou não abre) precisa ser FALADA, não só aparecer no painel.
+    tracker.on_camera_problem = session.camera_problem
+    tracker.on_camera_ok      = session.camera_ok
 
     # ── Dashboard web ────────────────────────────────────────────────────
     if not args.no_web:

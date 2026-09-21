@@ -75,6 +75,11 @@ class KinectTracker:
         self.camera_index        = camera_index
         self.on_frame            = on_frame
         self.on_status           = on_status
+        # Problemas da câmera que a Sessão precisa FALAR: quem não enxerga não vê a faixa amarela do painel.
+        # on_camera_problem("lost" = parou de enviar imagem | "failed" = não abriu/encerrou), on_camera_ok().
+        self.on_camera_problem: Optional[Callable[[str], None]] = None
+        self.on_camera_ok:      Optional[Callable[[], None]]    = None
+        self._problem_reported  = False
         self.rate_hz             = rate_hz
         self.model_complexity    = model_complexity
         self.min_det_conf        = min_detection_confidence
@@ -139,6 +144,22 @@ class KinectTracker:
         print(f"[kinect] {msg}")
         if self.on_status:
             self.on_status(msg, connected)
+
+    def _report_problem(self, kind: str):
+        self._problem_reported = True
+        if self.on_camera_problem:
+            try:
+                self.on_camera_problem(kind)
+            except Exception as e:
+                print(f"[kinect] erro ao avisar a sessão sobre a câmera: {e}")
+
+    def _report_ok(self):
+        self._problem_reported = False
+        if self.on_camera_ok:
+            try:
+                self.on_camera_ok()
+            except Exception as e:
+                print(f"[kinect] erro ao avisar a sessão sobre a câmera: {e}")
 
     def _bridge_log(self, msg: str):
         """Log da ponte nativa: só PROBLEMAS DA CÂMERA viram status do painel.
@@ -431,6 +452,7 @@ class KinectTracker:
             if not bridge.start():
                 self._running = False
                 self._log("Bridge do Kinect SDK não iniciou.", False)
+                self._report_problem("failed")
                 return
             self._sdk_bridge = bridge
         else:
@@ -439,6 +461,7 @@ class KinectTracker:
             if cap is None:
                 self._running = False
                 self._log("Câmera não encontrada.", False)
+                self._report_problem("failed")
                 return
 
             cap.set(cv2.CAP_PROP_FRAME_WIDTH,  640)
@@ -455,6 +478,7 @@ class KinectTracker:
 
         if not self._load_mediapipe():
             self._running = False
+            self._report_problem("failed")
             # Sem isso, a ponte do Kinect (processo nativo) ficava rodando e
             # segurando o sensor até o programa fechar.
             self._release()
@@ -486,6 +510,7 @@ class KinectTracker:
                     if time.monotonic() - fail_t0 > (1.5 if got_first else 10.0):
                         self._log("Câmera parou de enviar frames.", True)
                         camera_lost = True
+                        self._report_problem("lost")
                         fail_t0 = time.monotonic()
                         # Notifica a sessão mesmo sem frame novo da câmera, para
                         # que o watchdog de enquadramento perceba a perda.
@@ -499,6 +524,8 @@ class KinectTracker:
 
                 fail_t0 = None
                 got_first = True
+                if self._problem_reported:
+                    self._report_ok()
                 if camera_lost:
                     self._log("Câmera voltou a enviar frames.", True)
                     camera_lost = False
@@ -544,6 +571,7 @@ class KinectTracker:
                     self.on_frame(SkeletonFrame(detected=False, timestamp=time.time()))
                 if err_cnt > 30:
                     self._log("Erros consecutivos demais — encerrando captura.", False)
+                    self._report_problem("failed")
                     break
                 time.sleep(0.05)
                 continue

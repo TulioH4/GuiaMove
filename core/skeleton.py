@@ -8,7 +8,7 @@ MediaPipe retorna 33 landmarks, cada um com (x, y, z, visibility):
   z: profundidade relativa (negativo = mais perto da câmera)
   visibility: confiança de detecção [0,1]
 
-Índices dos landmarks relevantes para o SeeMove:
+Índices dos landmarks relevantes para o GuiaMove:
   0=nose  11=left_shoulder  12=right_shoulder
   13=left_elbow  14=right_elbow  15=left_wrist  16=right_wrist
   23=left_hip  24=right_hip
