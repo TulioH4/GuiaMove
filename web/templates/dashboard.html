@@ -210,12 +210,15 @@ body.solo-mode .live-head::before{content:"";flex:0 0 auto;width:124px;height:21
 .tmsg{color:var(--text)}
 
 /* ── Tabs (Voz / Sessão) ── */
-.tabs{display:flex;gap:2px;margin-bottom:14px;border-bottom:1px solid var(--tabs-line)}
+.tabs{display:flex;gap:2px;border-bottom:1px solid var(--tabs-line)}
 .tab{padding:8px 16px;font-size:13px;color:var(--tab-fg);cursor:pointer;border-bottom:2px solid transparent;margin-bottom:-1px;transition:all .15s}
 .tab:hover{color:var(--tab-hover)}
 .tab.active{color:var(--tab-on-fg);border-bottom-color:var(--tab-on-line);font-weight:600}
 .tabpanel{display:none}
 .tabpanel.active{display:block}
+.tabbar{position:relative}
+.tabbar-pop{position:absolute;right:0;top:3px}
+.live-icon-btn[hidden]{display:none}
 
 /* ── Voice panel ── */
 .voice-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px}
@@ -481,16 +484,16 @@ code{background:var(--bg4);color:var(--title);padding:2px 7px;border-radius:4px;
     </div>
 
     <!-- Tabs: Configuração / Sessão -->
+    <div class="tabbar">
+    <button class="live-icon-btn tabbar-pop" id="btnPopConfig" onclick="popOut('config')" title="Abrir a configuração em janela separada (útil pra mostrar em outra tela)" aria-label="Abrir a configuração em janela separada">🗗</button>
     <div class="tabs" role="tablist" aria-label="Configuração e sessão">
       <div class="tab active" role="tab" tabindex="0" aria-selected="true" aria-controls="panel-voice" onclick="switchTab('voice',this)" onkeydown="tabKey(event,this)"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h9.2M17.4 7H20M4 17h2.6M10.8 17H20"/><circle cx="15.3" cy="7" r="2.1"/><circle cx="8.7" cy="17" r="2.1"/></svg>Configuração</div>
       <div class="tab" role="tab" tabindex="0" aria-selected="false" aria-controls="panel-session" onclick="switchTab('session',this)" onkeydown="tabKey(event,this)"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><rect x="5.5" y="4.6" width="13" height="16" rx="2"/><path d="M9.2 4.6V3.4h5.6v1.2M9 10.4h6M9 14.4h4"/></svg>Sessão</div>
     </div>
+    </div>
 
     <!-- ══ TAB: CONFIGURAÇÃO (calibração de enquadramento + voz) ══ -->
     <div class="tabpanel active" id="panel-voice" role="tabpanel">
-      <div style="display:flex;justify-content:flex-end;margin-bottom:8px">
-        <button class="live-icon-btn" onclick="popOut('config')" title="Abrir em janela separada (útil pra mostrar em outra tela)">🗗</button>
-      </div>
       <div class="card" style="margin-bottom:14px">
         <div class="ctitle" role="heading" aria-level="2"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8.2"/><circle cx="12" cy="12" r="4.2"/><circle cx="12" cy="12" r=".7" fill="currentColor"/></svg>Calibração de enquadramento</div>
         <p style="font-size:13px;color:var(--text2);line-height:1.6;margin-bottom:12px">
@@ -1438,6 +1441,7 @@ function switchTab(name, el) {
   el.classList.add("active");
   el.setAttribute("aria-selected", "true");
   document.getElementById("panel-"+name).classList.add("active");
+  document.getElementById("btnPopConfig").hidden = (name !== "voice");
 }
 // As abas são <div>: sem isto só o mouse as acionava. Enter ou Espaço ativam, como num botão.
 function tabKey(ev, el) {
