@@ -21,7 +21,7 @@ MediaPipe retorna 33 landmarks, cada um com (x, y, z, visibility):
 import math
 import time
 from dataclasses import dataclass, field
-from typing import Dict, List, Optional, Tuple
+from typing import Dict, List, Optional
 
 # Índices MediaPipe Pose
 NOSE          = 0
@@ -159,7 +159,6 @@ def compute_metrics(points: Dict[int, Point3D]) -> SkeletonMetrics:
     lh, rh = gv(L_HIP),      gv(R_HIP)
     lk, rk = gv(L_KNEE),     gv(R_KNEE)
     la, ra = gv(L_ANKLE),    gv(R_ANKLE)
-    lf, rf = gv(L_FOOT),     gv(R_FOOT)
 
     vis_vals = [p.visibility for p in points.values() if p.visible]
     m.confidence = round(sum(vis_vals) / len(vis_vals) * 100, 1) if vis_vals else 0.0

@@ -11,6 +11,9 @@ Rotas HTTP:
   GET  /api/tracker/status        Status atual do tracker
   POST /api/tracker/reset_pose    Reseta a suavização + o boneco 3D dos clientes
 
+  GET  /api/kinect/tilt           Status do motor de inclinação do Kinect (só com --kinect-sdk)
+  POST /api/kinect/tilt           Inclina o Kinect: {"angle": N} (absoluto) ou {"delta": N} (relativo)
+
   GET  /api/exercises             Lista exercícios disponíveis
   POST /api/exercise/<key>        Troca exercício ativo
   POST /api/exercise/<key>/start  Inicia (gatilho estrito — sai de STOPPED)
@@ -29,7 +32,10 @@ Rotas HTTP:
   GET  /api/report/json           JSON completo
 
 Eventos Socket.IO emitidos:
-  frame           — dados do frame analisado (métricas + imagem)
+  frame           — dados do frame analisado (métricas; a imagem vai à parte)
+  frame_image     — {img}: o quadro de câmera em JPEG base64
+  session_state   — {state}: resposta rápida da interface aos botões Iniciar/Pausar/Parar
+  voice_settings_changed — {enabled, rate, volume} depois de salvar a configuração de voz
   tts_log         — entrada de log de voz (texto, para o log visual)
   audio_speak     — {id, text, rate, volume, cancel} — o browser fala via Web Speech API
   audio_cue       — {severity, pan} — bipe curto via Web Audio API
@@ -134,6 +140,15 @@ _state = {
     "voice_volume":      1.0,
 }
 _lock = threading.Lock()
+
+# Erros de conversão de número vindos de um corpo JSON qualquer ("abc", null, Infinity...).
+_BAD_NUMBER = (TypeError, ValueError, OverflowError)
+
+
+def _json_body() -> dict:
+    """Corpo JSON da requisição como dict; qualquer outra coisa (vazio, lista, texto) vira {}."""
+    data = request.get_json(silent=True)
+    return data if isinstance(data, dict) else {}
 
 
 def inject_refs(session, tracker, reporter, settings, tts, registry):
@@ -275,6 +290,19 @@ def push_audio_event(event: str, payload: dict):
     socketio.emit(event, payload)
 
 
+def _clear_detection():
+    """Câmera desligada: a última pose e a última imagem deixam de valer. Sem isto o servidor guardava
+    "detectado" para sempre — o painel seguia dizendo "esqueleto detectado" com a câmera off, e toda
+    aba aberta depois já nascia assim."""
+    with _lock:
+        _state["detected"]      = False
+        _state["confidence"]    = 0.0
+        _state["raw_landmarks"] = []
+        _state["image_b64"]     = None
+        snap = {k: v for k, v in _state.items() if k != "image_b64"}
+    socketio.emit("frame", snap)
+
+
 def push_tracker_status(msg: str, connected: bool):
     """Chamado pelo KinectTracker ao mudar de estado."""
     with _lock:
@@ -305,9 +333,12 @@ def tracker_connect():
     if _tracker is None:
         return jsonify({"error": "sessão não inicializada"}), 500
 
-    data         = request.get_json(silent=True) or {}
-    camera_index = int(data.get("camera_index", 0))
-    use_depth    = bool(data.get("use_depth", True))
+    data = _json_body()
+    try:
+        camera_index = int(data.get("camera_index", 0))
+    except _BAD_NUMBER:
+        return jsonify({"error": "camera_index deve ser um número inteiro"}), 400
+    use_depth = bool(data.get("use_depth", True))
 
     # Atualiza parâmetros se fornecidos
     _tracker.camera_index = camera_index
@@ -329,6 +360,7 @@ def tracker_connect():
 def tracker_disconnect():
     if _tracker:
         _tracker.disconnect()
+        _clear_detection()
         push_tracker_status("Câmera desconectada.", False)
     return jsonify({"ok": True})
 
@@ -368,15 +400,18 @@ def kinect_tilt():
     """
     if _tracker is None:
         return jsonify({"error": "sessão não inicializada"}), 500
-    data = request.get_json(silent=True) or {}
-    if "angle" in data:
-        angle = int(data["angle"])
-    elif "delta" in data:
-        status = _tracker.get_tilt_status()
-        base = status["requested_angle"] if status else 0
-        angle = base + int(data["delta"])
-    else:
-        return jsonify({"error": "informe 'angle' ou 'delta'"}), 400
+    data = _json_body()
+    try:
+        if "angle" in data:
+            angle = int(data["angle"])
+        elif "delta" in data:
+            status = _tracker.get_tilt_status()
+            base = status["requested_angle"] if status else 0
+            angle = base + int(data["delta"])
+        else:
+            return jsonify({"error": "informe 'angle' ou 'delta'"}), 400
+    except _BAD_NUMBER:
+        return jsonify({"error": "'angle' e 'delta' devem ser números inteiros"}), 400
     if not _tracker.set_tilt(angle):
         return jsonify({"error": "motor indisponível (só funciona com --kinect-sdk)"}), 400
     return jsonify({"ok": True, "requested_angle": max(-27, min(27, angle))})
@@ -526,27 +561,47 @@ def set_voice_settings():
     if _settings is None or _tts is None:
         return jsonify({"error": "sessão não inicializada"}), 500
 
-    data = request.get_json(silent=True) or {}
+    data = _json_body()
     v    = _settings.voice
+
+    # Valida os números ANTES de aplicar qualquer coisa: valor inválido devolve 400 e não deixa a
+    # configuração pela metade. Campo nulo = "não mexe" (o painel manda null quando uma caixa fica vazia).
+    def num(key, cast, lo, hi):
+        val = data.get(key)
+        if val is None:
+            return None
+        val = cast(val)
+        if val != val:                      # NaN
+            raise ValueError(key)
+        return max(lo, min(hi, val))
+
+    try:
+        rate    = num("rate",             int,   50,  300)
+        volume  = num("volume",           float, 0.0, 1.0)
+        cd_ok   = num("cooldown_ok_s",    float, 1.0, 60.0)
+        cd_warn = num("cooldown_warn_s",  float, 1.0, 60.0)
+        cd_err  = num("cooldown_error_s", float, 0.5, 60.0)
+    except _BAD_NUMBER:
+        return jsonify({"error": "valor numérico inválido nas configurações de voz"}), 400
 
     if "enabled" in data:
         v.enabled       = bool(data["enabled"])
         _tts.enabled    = v.enabled
-    if "rate" in data:
-        v.rate = max(50, min(300, int(data["rate"])))
+    if rate is not None:
+        v.rate = rate
         _tts.set_rate(v.rate)
-    if "volume" in data:
-        v.volume = max(0.0, min(1.0, float(data["volume"])))
+    if volume is not None:
+        v.volume = volume
         _tts.set_volume(v.volume)
     if "voice_id" in data and data["voice_id"]:
         v.voice_id = data["voice_id"]
         _tts.set_voice(v.voice_id)
-    if "cooldown_ok_s" in data:
-        v.cooldown_ok_s = max(1.0, float(data["cooldown_ok_s"]))
-    if "cooldown_warn_s" in data:
-        v.cooldown_warn_s = max(1.0, float(data["cooldown_warn_s"]))
-    if "cooldown_error_s" in data:
-        v.cooldown_error_s = max(0.5, float(data["cooldown_error_s"]))
+    if cd_ok is not None:
+        v.cooldown_ok_s = cd_ok
+    if cd_warn is not None:
+        v.cooldown_warn_s = cd_warn
+    if cd_err is not None:
+        v.cooldown_error_s = cd_err
     if "confirm_on_correction" in data:
         v.confirm_on_correction = bool(data["confirm_on_correction"])
 
@@ -584,9 +639,11 @@ def test_voice():
     """
     if _session is None:
         return jsonify({"error": "sessão não inicializada"}), 500
-    data = request.get_json(silent=True) or {}
-    msg  = data.get("message", "Teste de voz do Guia Move.")
-    _session.audio.speak_now(msg)
+    data = _json_body()
+    msg  = data.get("message")
+    if not isinstance(msg, str) or not msg.strip():
+        msg = "Teste de voz do Guia Move."
+    _session.audio.speak_now(msg[:300])
     return jsonify({"ok": True})
 
 
@@ -655,7 +712,7 @@ def report_csv():
         })
     fname = f"seemove_{time.strftime('%Y%m%d_%H%M%S')}.csv"
     return Response(
-        buf.getvalue(), mimetype="text/csv",
+        "\ufeff" + buf.getvalue(), mimetype="text/csv",
         headers={"Content-Disposition": f"attachment; filename={fname}"}
     )
 

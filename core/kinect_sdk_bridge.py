@@ -82,6 +82,9 @@ class KinectSDKBridge:
             stdout=subprocess.DEVNULL,
             stderr=subprocess.PIPE,
             text=True,
+            # Byte que não decodifica no stderr da ponte (ex.: mensagem de erro do Windows em outra codepage)
+            # derrubaria a thread que esvazia o pipe; sem ela o pipe enche e a ponte trava.
+            errors="replace",
         )
         # Drena o stderr continuamente numa thread própria. Sem isso, o
         # pipe só era lido quando o processo já tinha morrido — se a

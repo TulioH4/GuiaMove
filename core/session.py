@@ -166,6 +166,7 @@ class Session:
         self._last_posture_rej     = 0
         self._lost_since          = None
         self._last_error_report   = 0.0
+        self._last_broadcast_error = 0.0
 
     # ── Início / Pausa / Parada de exercício ────────────────────────────────
 
@@ -522,7 +523,13 @@ class Session:
             try:
                 self.web_push(frame, result, summary)
             except Exception:
-                pass
+                # Não engole em silêncio: se o envio ao painel falhar sempre (bug no servidor), o boneco e
+                # as métricas congelam sem nenhum aviso. Registra no máx. 1x a cada 5 s, como a análise.
+                now = time.time()
+                if now - self._last_broadcast_error > 5.0:
+                    self._last_broadcast_error = now
+                    print("[sessão] erro ao enviar o quadro ao painel (seguindo):\n"
+                          + traceback.format_exc())
 
     # ── Máquina de estados ────────────────────────────────────────────────
 

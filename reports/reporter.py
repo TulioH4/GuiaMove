@@ -9,10 +9,10 @@ import json
 import threading
 import time
 from collections import deque
-from dataclasses import dataclass, field
-from typing import Deque, List, Optional
+from dataclasses import dataclass
+from typing import Deque
 
-from core.skeleton import SkeletonFrame, SkeletonMetrics
+from core.skeleton import SkeletonFrame
 from exercises.base import FeedbackResult, Severity
 from reports._brand import LOGO_ICON, LOGO_WORDMARK
 
@@ -135,7 +135,10 @@ class SessionReporter:
         # (ok_pct, correções, médias) continuam cobrindo a sessão inteira.
         n     = self._total_n or 1
         det   = self._detected_n or 1
-        elapsed = int(time.time() - self._session_start)
+        # Antes do primeiro quadro monitorado ainda não há sessão: duração zero. O relógio só começa em
+        # record_skeleton(); sem isto o painel mostrava o tempo desde a abertura do programa e depois
+        # "voltava" a 00:00 ao apertar Iniciar.
+        elapsed = int(time.time() - self._session_start) if self._total_n else 0
         m, s    = divmod(elapsed, 60)
 
         return {
@@ -164,7 +167,7 @@ class SessionReporter:
         ]
         with self._records_lock:
             records = list(self._records)
-        with open(filepath, "w", newline="", encoding="utf-8") as f:
+        with open(filepath, "w", newline="", encoding="utf-8-sig") as f:   # BOM: o Excel lê os acentos
             w = csv.DictWriter(f, fieldnames=fields)
             w.writeheader()
             for r in records:
@@ -233,7 +236,7 @@ class SessionReporter:
         total    = len(records) or 1
         ok_pct   = round(sum(1 for r in records if r.severity == "ok")   / total * 100, 1)
         warn_pct = round(sum(1 for r in records if r.severity == "warn")  / total * 100, 1)
-        err_pct  = round(100 - ok_pct - warn_pct, 1)
+        err_pct  = max(0.0, round(100 - ok_pct - warn_pct, 1))
 
         # Pior valgo registrado
         max_vl = max((max(0.0, r.knee_valgus_l) for r in det_records), default=0)
@@ -358,12 +361,12 @@ class SessionReporter:
     <h2>Métricas biomecânicas médias</h2>
     <div class="grid2">
       <div class="info">
-        <div class="ir"><span class="ik">Inclinação ombros (média)</span>
-          <span class="iv">{s['mean_shoulder_tilt']:+.2f}°</span></div>
-        <div class="ir"><span class="ik">Inclinação quadril (média)</span>
-          <span class="iv">{s['mean_hip_tilt']:+.2f}°</span></div>
-        <div class="ir"><span class="ik">Inclinação tronco (média)</span>
-          <span class="iv">{s['mean_trunk_lean']:+.2f}°</span></div>
+        <div class="ir"><span class="ik">Inclinação ombros (média absoluta)</span>
+          <span class="iv">{s['mean_shoulder_tilt']:.2f}°</span></div>
+        <div class="ir"><span class="ik">Inclinação quadril (média absoluta)</span>
+          <span class="iv">{s['mean_hip_tilt']:.2f}°</span></div>
+        <div class="ir"><span class="ik">Inclinação tronco (média absoluta)</span>
+          <span class="iv">{s['mean_trunk_lean']:.2f}°</span></div>
       </div>
       <div class="info">
         <div class="ir"><span class="ik">Valgo joelho esq. (média)</span>

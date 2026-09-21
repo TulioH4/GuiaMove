@@ -11,11 +11,11 @@ Profundidade via freenect (opcional, só com Kinect v1 físico).
 import base64
 import threading
 import time
-from typing import Callable, Dict, List, Optional
+from typing import Callable, Dict, Optional
 
 from core.skeleton import (
     Point3D, SkeletonFrame, compute_metrics, MIN_VIS,
-    L_SHOULDER, R_SHOULDER, L_HIP, R_HIP,
+    L_HIP, R_HIP,
     L_KNEE, R_KNEE, L_ANKLE, R_ANKLE,
 )
 from core.filters import LandmarkSmoother

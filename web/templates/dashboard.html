@@ -219,6 +219,7 @@ body.solo-mode .live-head::before{content:"";flex:0 0 auto;width:124px;height:21
 
 /* ── Voice panel ── */
 .voice-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+@media(max-width:560px){.voice-grid{grid-template-columns:1fr}}
 .vrow{display:flex;flex-direction:column;gap:6px;margin-bottom:14px}
 .vlbl{font-size:12px;color:var(--text2)}
 .vval{font-size:13px;font-weight:600;color:var(--text);min-width:38px;text-align:right}
@@ -306,7 +307,7 @@ code{background:var(--bg4);color:var(--title);padding:2px 7px;border-radius:4px;
 </header>
 
 <!-- Tracker banner -->
-<div class="banner" id="trackerBanner">
+<div class="banner" id="trackerBanner" role="status">
   <span id="trackerIcon">📡</span>
   <span class="bmsg" id="trackerMsg">Câmera não conectada. Clique no ⚙ do painel de câmera para iniciar.</span>
   <button class="hbtn danger" id="btnDisconn" style="display:none" onclick="disconnectTracker()">Desconectar</button>
@@ -415,7 +416,7 @@ code{background:var(--bg4);color:var(--title);padding:2px 7px;border-radius:4px;
   <div class="lower-main">
 
     <div class="card" id="panelStats">
-      <div class="ctitle" style="display:flex;justify-content:space-between;align-items:center">
+      <div class="ctitle" role="heading" aria-level="2" style="display:flex;justify-content:space-between;align-items:center">
         <span>Desvios posturais (ao vivo)</span>
         <button class="live-icon-btn" onclick="popOut('stats')" title="Abrir em janela separada (útil pra mostrar em outra tela)">🗗</button>
       </div>
@@ -480,18 +481,18 @@ code{background:var(--bg4);color:var(--title);padding:2px 7px;border-radius:4px;
     </div>
 
     <!-- Tabs: Configuração / Sessão -->
-    <div class="tabs">
-      <div class="tab active" onclick="switchTab('voice',this)"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h9.2M17.4 7H20M4 17h2.6M10.8 17H20"/><circle cx="15.3" cy="7" r="2.1"/><circle cx="8.7" cy="17" r="2.1"/></svg>Configuração</div>
-      <div class="tab"        onclick="switchTab('session',this)"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><rect x="5.5" y="4.6" width="13" height="16" rx="2"/><path d="M9.2 4.6V3.4h5.6v1.2M9 10.4h6M9 14.4h4"/></svg>Sessão</div>
+    <div class="tabs" role="tablist" aria-label="Configuração e sessão">
+      <div class="tab active" role="tab" tabindex="0" aria-selected="true" aria-controls="panel-voice" onclick="switchTab('voice',this)" onkeydown="tabKey(event,this)"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h9.2M17.4 7H20M4 17h2.6M10.8 17H20"/><circle cx="15.3" cy="7" r="2.1"/><circle cx="8.7" cy="17" r="2.1"/></svg>Configuração</div>
+      <div class="tab" role="tab" tabindex="0" aria-selected="false" aria-controls="panel-session" onclick="switchTab('session',this)" onkeydown="tabKey(event,this)"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><rect x="5.5" y="4.6" width="13" height="16" rx="2"/><path d="M9.2 4.6V3.4h5.6v1.2M9 10.4h6M9 14.4h4"/></svg>Sessão</div>
     </div>
 
     <!-- ══ TAB: CONFIGURAÇÃO (calibração de enquadramento + voz) ══ -->
-    <div class="tabpanel active" id="panel-voice">
+    <div class="tabpanel active" id="panel-voice" role="tabpanel">
       <div style="display:flex;justify-content:flex-end;margin-bottom:8px">
         <button class="live-icon-btn" onclick="popOut('config')" title="Abrir em janela separada (útil pra mostrar em outra tela)">🗗</button>
       </div>
       <div class="card" style="margin-bottom:14px">
-        <div class="ctitle"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8.2"/><circle cx="12" cy="12" r="4.2"/><circle cx="12" cy="12" r=".7" fill="currentColor"/></svg>Calibração de enquadramento</div>
+        <div class="ctitle" role="heading" aria-level="2"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8.2"/><circle cx="12" cy="12" r="4.2"/><circle cx="12" cy="12" r=".7" fill="currentColor"/></svg>Calibração de enquadramento</div>
         <p style="font-size:13px;color:var(--text2);line-height:1.6;margin-bottom:12px">
           Antes de iniciar qualquer exercício, o GuiaMove confirma sozinho que você está de corpo
           inteiro visível pela câmera, orientando por voz até o enquadramento ficar correto.
@@ -502,12 +503,12 @@ code{background:var(--bg4);color:var(--title);padding:2px 7px;border-radius:4px;
       </div>
       <div class="voice-grid">
         <div class="card">
-          <div class="ctitle">Configurações de voz</div>
+          <div class="ctitle" role="heading" aria-level="2">Configurações de voz</div>
 
           <div class="vrow">
             <div class="vtoggle">
               <label class="toggle-switch">
-                <input type="checkbox" id="voiceEnabled" checked onchange="saveVoice()">
+                <input type="checkbox" id="voiceEnabled" aria-label="Voz ativada" checked onchange="saveVoice()">
                 <div class="toggle-slider"></div>
               </label>
               <span style="font-size:13px;color:var(--text)">Voz ativada</span>
@@ -517,7 +518,7 @@ code{background:var(--bg4);color:var(--title);padding:2px 7px;border-radius:4px;
           <div class="vrow">
             <div class="vlbl">Velocidade da fala</div>
             <div class="slider-row">
-              <input type="range" id="voiceRate" min="50" max="300" value="145" oninput="updateRateVal(this)" onchange="saveVoice()">
+              <input type="range" id="voiceRate" aria-label="Velocidade da fala, em palavras por minuto" min="50" max="300" value="145" oninput="updateRateVal(this)" onchange="saveVoice()">
               <span class="vval" id="voiceRateVal">145</span>
             </div>
             <div style="display:flex;justify-content:space-between;font-size:10px;color:var(--text3);margin-top:2px">
@@ -528,14 +529,14 @@ code{background:var(--bg4);color:var(--title);padding:2px 7px;border-radius:4px;
           <div class="vrow">
             <div class="vlbl">Volume</div>
             <div class="slider-row">
-              <input type="range" id="voiceVolume" min="0" max="100" value="100" oninput="updateVolVal(this)" onchange="saveVoice()">
+              <input type="range" id="voiceVolume" aria-label="Volume da voz, em porcentagem" min="0" max="100" value="100" oninput="updateVolVal(this)" onchange="saveVoice()">
               <span class="vval" id="voiceVolVal">100%</span>
             </div>
           </div>
 
           <div class="vrow">
             <div class="vlbl">Voz do sistema</div>
-            <select class="vsel" id="voiceSelect" onchange="saveVoice()">
+            <select class="vsel" id="voiceSelect" aria-label="Voz do sistema" onchange="saveVoice()">
               <option value="">Carregando vozes...</option>
             </select>
             <div id="voiceHint" style="font-size:11px;color:var(--text3);margin-top:4px;display:none">
@@ -552,12 +553,12 @@ code{background:var(--bg4);color:var(--title);padding:2px 7px;border-radius:4px;
         </div>
 
         <div class="card">
-          <div class="ctitle">Comportamento do feedback</div>
+          <div class="ctitle" role="heading" aria-level="2">Comportamento do feedback</div>
 
           <div class="vrow">
             <div class="vlbl">Silêncio após correção (seg)</div>
             <div class="slider-row">
-              <input type="range" id="cooldownOk" min="2" max="10" value="4" oninput="document.getElementById('cooldownOkVal').textContent=this.value+'s'" onchange="saveVoice()">
+              <input type="range" id="cooldownOk" aria-label="Silêncio após correção, em segundos" min="2" max="10" value="4" oninput="document.getElementById('cooldownOkVal').textContent=this.value+'s'" onchange="saveVoice()">
               <span class="vval" id="cooldownOkVal">4s</span>
             </div>
             <div style="font-size:11px;color:var(--text3);margin-top:2px">Tempo sem falar quando postura está OK</div>
@@ -566,7 +567,7 @@ code{background:var(--bg4);color:var(--title);padding:2px 7px;border-radius:4px;
           <div class="vrow">
             <div class="vlbl">Intervalo entre correções (seg)</div>
             <div class="slider-row">
-              <input type="range" id="cooldownWarn" min="2" max="8" value="3" oninput="document.getElementById('cooldownWarnVal').textContent=this.value+'s'" onchange="saveVoice()">
+              <input type="range" id="cooldownWarn" aria-label="Intervalo entre correções, em segundos" min="2" max="8" value="3" oninput="document.getElementById('cooldownWarnVal').textContent=this.value+'s'" onchange="saveVoice()">
               <span class="vval" id="cooldownWarnVal">3s</span>
             </div>
           </div>
@@ -574,7 +575,7 @@ code{background:var(--bg4);color:var(--title);padding:2px 7px;border-radius:4px;
           <div class="vrow">
             <div class="vlbl">Intervalo em situação crítica (seg)</div>
             <div class="slider-row">
-              <input type="range" id="cooldownErr" min="1" max="4" value="2" step="0.5" oninput="document.getElementById('cooldownErrVal').textContent=this.value+'s'" onchange="saveVoice()">
+              <input type="range" id="cooldownErr" aria-label="Intervalo em situação crítica, em segundos" min="1" max="4" value="2" step="0.5" oninput="document.getElementById('cooldownErrVal').textContent=this.value+'s'" onchange="saveVoice()">
               <span class="vval" id="cooldownErrVal">2s</span>
             </div>
           </div>
@@ -582,7 +583,7 @@ code{background:var(--bg4);color:var(--title);padding:2px 7px;border-radius:4px;
           <div class="vrow">
             <div class="vtoggle">
               <label class="toggle-switch">
-                <input type="checkbox" id="confirmCorrection" checked onchange="saveVoice()">
+                <input type="checkbox" id="confirmCorrection" aria-label="Confirmar quando corrigir" checked onchange="saveVoice()">
                 <div class="toggle-slider"></div>
               </label>
               <span style="font-size:13px;color:var(--text)">Confirmar quando corrigir <span style="color:var(--text3);font-size:11px">("muito bom")</span></span>
@@ -599,7 +600,7 @@ code{background:var(--bg4);color:var(--title);padding:2px 7px;border-radius:4px;
     </div>
 
     <!-- ══ TAB: SESSÃO ══ -->
-    <div class="tabpanel" id="panel-session">
+    <div class="tabpanel" id="panel-session" role="tabpanel">
       <div class="g4">
         <div class="metric"><div class="ml">Duração</div><div class="mv" id="sDur" style="font-size:20px">00:00</div></div>
         <div class="metric"><div class="ml">Postura correta</div><div class="mv ok" id="sOk">0%</div></div>
@@ -612,9 +613,9 @@ code{background:var(--bg4);color:var(--title);padding:2px 7px;border-radius:4px;
 
   <!-- Log de feedbacks — mesma marcação/lógica de sempre, só reposicionado -->
   <div class="card log-card">
-    <div class="ctitle">
+    <div class="ctitle" role="heading" aria-level="2">
       <span>Log de feedback de áudio</span>
-      <button onclick="clearLog()" style="background:none;border:none;color:var(--text3);font-size:11px;cursor:pointer">limpar</button>
+      <button onclick="clearLog()" aria-label="Limpar o log de feedback de áudio" style="background:none;border:none;color:var(--text3);font-size:11px;cursor:pointer;padding:5px 8px;min-height:24px">limpar</button>
     </div>
     <div class="ttslog" id="ttslog" role="log" aria-live="polite">
       <div class="ttsentry"><span class="ttime">--:--</span><span class="tmsg">Aguardando...</span></div>
@@ -631,7 +632,7 @@ code{background:var(--bg4);color:var(--title);padding:2px 7px;border-radius:4px;
 
 <!-- ══ MODAL: Câmera ══ -->
 <div class="modal-bg" id="camModal">
-  <div class="modal">
+  <div class="modal" role="dialog" aria-modal="true" aria-label="Conectar câmera ou Kinect">
     <h3><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 8.5A1.5 1.5 0 0 1 5.5 7h2.2l1.1-1.6A1.5 1.5 0 0 1 10 4.75h4a1.5 1.5 0 0 1 1.2.65L16.3 7h2.2A1.5 1.5 0 0 1 20 8.5v9a1.5 1.5 0 0 1-1.5 1.5h-13A1.5 1.5 0 0 1 4 17.5z"/><circle cx="12" cy="12.6" r="3.4"/></svg>Conectar câmera / Kinect</h3>
     <p>O Kinect v1 é reconhecido como câmera RGB pelo Windows. Se tiver mais de uma câmera, tente índices diferentes.</p>
     <ul class="steps">
@@ -648,13 +649,13 @@ code{background:var(--bg4);color:var(--title);padding:2px 7px;border-radius:4px;
           <button class="vbtn" onclick="setCamIdx(1)" id="cam1">1</button>
           <button class="vbtn" onclick="setCamIdx(2)" id="cam2">2</button>
         </div>
-        <input type="number" id="camIdxCustom" min="0" max="10" value="0"
+        <input type="number" id="camIdxCustom" aria-label="Índice personalizado da câmera" min="0" max="10" value="0"
                style="margin-top:8px;background:var(--bg3);border:1px solid var(--border2);border-radius:var(--rs);color:var(--text);padding:6px 10px;font-size:13px;width:120px">
         <span style="font-size:12px;color:var(--text3);margin-left:8px">índice personalizado</span>
       </div>
       <div class="vtoggle">
         <label class="toggle-switch">
-          <input type="checkbox" id="useDepth" checked>
+          <input type="checkbox" id="useDepth" aria-label="Usar profundidade (Kinect IR)" checked>
           <div class="toggle-slider"></div>
         </label>
         <span style="font-size:13px;color:var(--text)">Usar profundidade (Kinect IR) <span style="color:var(--text3);font-size:11px">requer freenect</span></span>
@@ -669,7 +670,7 @@ code{background:var(--bg4);color:var(--title);padding:2px 7px;border-radius:4px;
 
 <!-- ══ MODAL: Relatório ══ -->
 <div class="modal-bg" id="reportModal">
-  <div class="modal">
+  <div class="modal" role="dialog" aria-modal="true" aria-label="Gerar relatório">
     <h3><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M7 3.5h6.4L18 8.1v11.4a1 1 0 0 1-1 1H7a1 1 0 0 1-1-1v-15a1 1 0 0 1 1-1z"/><path d="M13.4 3.5v4.6H18M9 12.6h6M9 16.2h6"/></svg>Gerar Relatório</h3>
     <p>Exporta os dados da sessão atual com métricas biomecânicas detalhadas.</p>
     <div class="modal-btns">
@@ -1160,9 +1161,14 @@ function updateFrame(d) {
   // Feedback bar
   const fb   = $id("fb");
   const icons = {ok:"✔", warn:"⚠", error:"✖"};
-  fb.className = "fbbar " + (d.severity || "ok");
-  $id("fbIcon").textContent = icons[d.severity] || "✔";
-  $id("fbText").textContent = d.feedback || "Aguardando...";
+  // #fb é uma região aria-live: reescrever o MESMO texto a ~30 quadros/s (≈56 mutações/s medidas) faz o
+  // leitor de tela repetir a fala ou engasgar. Só escreve quando algo mudou de fato.
+  const fbClass = "fbbar " + (d.severity || "ok");
+  if (fb.className !== fbClass) fb.className = fbClass;
+  const fbIcon = icons[d.severity] || "✔";
+  if ($id("fbIcon").textContent !== fbIcon) $id("fbIcon").textContent = fbIcon;
+  const fbText = d.feedback || "Aguardando...";
+  if ($id("fbText").textContent !== fbText) $id("fbText").textContent = fbText;
 
   // Contador de repetições — só o agachamento conta repetição hoje.
   // Mostra mesmo com 0 reps feitas ainda (prova que o contador está
@@ -1284,7 +1290,12 @@ function updateBanner(msg, connected) {
   const m = document.getElementById("trackerMsg");
   const i = document.getElementById("trackerIcon");
   const d = document.getElementById("btnDisconn");
-  b.className = "banner" + (connected ? " on" : msg.toLowerCase().includes("err") || msg.toLowerCase().includes("não") ? " err" : " warn");
+  // O rastreador manda alguns avisos com connected=true (a câmera segue "conectada": o botão Desconectar precisa
+  // continuar aparecendo). Só que "Câmera parou de enviar frames" ou "Erro ao processar frame" NÃO podem sair
+  // em verde com ✅ — a cor também olha o texto.
+  const low = msg.toLowerCase();
+  const problem = /err|parou|falh|timeout|indispon/.test(low);
+  b.className = "banner" + (connected ? (problem ? " warn" : " on") : (problem || low.includes("não") ? " err" : " warn"));
   m.textContent = msg;
   i.textContent = connected ? "✅" : "📡";
   d.style.display = connected ? "" : "none";
@@ -1298,7 +1309,8 @@ function setCamIdx(n) {
 
 function connectTracker() {
   closeModal("camModal");
-  const idx   = parseInt(document.getElementById("camIdxCustom").value) || camIdx;
+  const typed = parseInt(document.getElementById("camIdxCustom").value, 10);
+  const idx   = Number.isNaN(typed) ? camIdx : typed;
   const depth = document.getElementById("useDepth").checked;
   updateBanner("Abrindo câmera (índice "+idx+")...", false);
   fetch("/api/tracker/connect", {
@@ -1421,10 +1433,15 @@ function applySessionStateUI(state) {
 
 // ── Tabs ──────────────────────────────────────────────────────────────────
 function switchTab(name, el) {
-  document.querySelectorAll(".tab").forEach(t => t.classList.remove("active"));
+  document.querySelectorAll(".tab").forEach(t => { t.classList.remove("active"); t.setAttribute("aria-selected", "false"); });
   document.querySelectorAll(".tabpanel").forEach(p => p.classList.remove("active"));
   el.classList.add("active");
+  el.setAttribute("aria-selected", "true");
   document.getElementById("panel-"+name).classList.add("active");
+}
+// As abas são <div>: sem isto só o mouse as acionava. Enter ou Espaço ativam, como num botão.
+function tabKey(ev, el) {
+  if (ev.key === "Enter" || ev.key === " ") { ev.preventDefault(); el.click(); }
 }
 
 // ── Modals ────────────────────────────────────────────────────────────────
@@ -1432,6 +1449,10 @@ function openModal(id)  { document.getElementById(id).classList.add("open"); }
 function closeModal(id) { document.getElementById(id).classList.remove("open"); }
 document.querySelectorAll(".modal-bg").forEach(bg =>
   bg.addEventListener("click", e => { if (e.target===bg) bg.classList.remove("open"); }));
+// Esc fecha a janela aberta (sem isto, quem usa só o teclado não tinha como sair dela).
+document.addEventListener("keydown", e => {
+  if (e.key === "Escape") document.querySelectorAll(".modal-bg.open").forEach(bg => bg.classList.remove("open"));
+});
 
 // ── Janela solo (popOut) ─────────────────────────────────────────────────
 // Abre o MESMO dashboard numa nova janela com ?solo=<id> — a nova janela
@@ -1449,9 +1470,9 @@ const SOLO_PANELS = {
 };
 
 function popOut(panel) {
-  const w = window.open(location.pathname + "?solo=" + panel, "_blank",
-    "width=960,height=720,noopener");
+  const w = window.open(location.pathname + "?solo=" + panel, "_blank", "width=960,height=720");
   if (!w) alert("O navegador bloqueou o pop-up. Permita pop-ups para este site e tente de novo.");
+  else w.opener = null;   // mesmo efeito do "noopener", sem esconder o retorno de window.open()
 }
 
 (function initSoloMode(){

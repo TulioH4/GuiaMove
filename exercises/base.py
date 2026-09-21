@@ -9,7 +9,7 @@ from dataclasses import dataclass
 from enum import Enum
 from typing import Callable, List, Optional
 
-from core.skeleton import SkeletonFrame, SkeletonMetrics, DARK_BRIGHTNESS, DARK_MESSAGE
+from core.skeleton import SkeletonFrame, DARK_BRIGHTNESS, DARK_MESSAGE
 
 
 class Severity(str, Enum):

@@ -17,7 +17,6 @@ Uso:
 
 import argparse
 import sys
-import time
 
 from core.kinect_tracker import KinectTracker
 from core.session import Session
@@ -92,6 +91,12 @@ def parse_args():
 
 
 def main():
+    # Com a saída redirecionada (arquivo/pipe) o Windows usa a codepage do sistema (cp1252), que não tem
+    # "─", "✓" nem "✗" dos logs — um print desses derrubava a sessão. Troca o caractere por "?" em vez de quebrar.
+    for stream in (sys.stdout, sys.stderr):
+        if hasattr(stream, "reconfigure"):
+            stream.reconfigure(errors="replace")
+
     args = parse_args()
 
     print("=" * 55)
@@ -155,7 +160,7 @@ def main():
     print(f"\n[exercício] {exercise.name}")
     print(f"[câmera]    índice {args.camera}")
     print(f"[modelo]    complexidade {args.complexity}")
-    print(f"[depth]     {'ativo (Kinect IR)' if settings.kinect.use_depth else 'desativado'}")
+    print(f"[depth]     {'ativo (Kinect IR)' if tracker.use_depth else 'desativado'}")
 
     # ── Reporter ─────────────────────────────────────────────────────────
     reporter = SessionReporter()
@@ -212,7 +217,7 @@ def main():
             sys.exit(1)
 
     # ── Inicia tracker ────────────────────────────────────────────────────
-    print(f"\n[sessão] Iniciando. Ctrl+C para encerrar.\n")
+    print("\n[sessão] Iniciando. Ctrl+C para encerrar.\n")
     if args.no_camera:
         print("[câmera] Desativada (--no-camera) — dashboard/voz/configuração "
               "seguem funcionando, sem captura nem análise de pose.")

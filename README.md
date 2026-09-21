@@ -42,7 +42,7 @@
 - **Guiado por voz:** o sistema explica o exercício, corrige a postura e conta as repetições em voz alta; dá para controlar tudo falando.
 - **Sem nada no corpo:** sem sensores de pressão, Wii Balance Board ou Arduino. Só uma câmera.
 - **Painel para quem acompanha:** dashboard no navegador com o vídeo, um **boneco 3D** que espelha o movimento, indicadores de desvio postural e o histórico do que foi falado.
-- **Relatório da sessão** em CSV, para acompanhar a evolução.
+- **Relatório da sessão** em CSV e em página HTML (com a logo, pronta para imprimir), para acompanhar a evolução.
 
 ## Como funciona
 
@@ -171,7 +171,7 @@ O sistema ignora o eco da própria voz, e frases longas nunca contam como comand
 ├── exercises/                    agachamento, postura estática e equilíbrio
 ├── audio/                        coordenação de fala, motores de voz e bipes
 ├── web/                          servidor Flask/Socket.IO e o dashboard (com o boneco 3D; three.js e socket.io em static/vendor, a logo em static/brand)
-├── reports/                      relatório CSV da sessão
+├── reports/                      relatório da sessão (CSV e página HTML)
 ├── config/                       configurações padrão
 ├── native/kinect_bridge/         ponte C++ (SDK do Kinect → Python)
 └── tools/                        gerador de placa em braile para impressão 3D
@@ -218,14 +218,13 @@ Já existe outra cópia do programa (ou outro app) na porta 5000. Feche-a ou use
 ## Limitações conhecidas e próximos passos
 
 **Hoje**
-- O boneco 3D não gira o tronco quando a pessoa vira de lado, e também não desloca o quadril nem inclina a cabeça.
+- O boneco 3D acompanha o deslocamento lateral e mantém os pés no chão, mas não gira o tronco quando a pessoa vira de lado nem inclina a cabeça.
 - O modelo do MediaPipe é o *lite*; `--complexity` é ignorado pela API atual.
 
 **Próximos passos**
 - Um painel pensado **primeiro para leitor de tela**, para a própria pessoa cega usar sozinha, com navegação total por teclado.
 - Enquadramento automático usando o motor de inclinação do Kinect.
 - Trocar o boneco procedural por um modelo 3D com esqueleto real.
-- Refazer a identidade visual do painel do aplicativo com o azul e o branco da logo oficial.
 
 ## Equipe
 
