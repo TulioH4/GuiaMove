@@ -369,11 +369,11 @@ class SessionReporter:
           <span class="iv">{s['mean_trunk_lean']:.2f}°</span></div>
       </div>
       <div class="info">
-        <div class="ir"><span class="ik">Valgo joelho esq. (média)</span>
+        <div class="ir"><span class="ik">Joelho esq. para dentro, o valgo (média)</span>
           <span class="iv">{s['mean_valgus_l']:.2f}%</span></div>
-        <div class="ir"><span class="ik">Valgo joelho dir. (média)</span>
+        <div class="ir"><span class="ik">Joelho dir. para dentro, o valgo (média)</span>
           <span class="iv">{s['mean_valgus_r']:.2f}%</span></div>
-        <div class="ir"><span class="ik">Valgo máximo registrado</span>
+        <div class="ir"><span class="ik">Joelho para dentro, o valgo (máximo registrado)</span>
           <span class="iv">{max(max_vl, max_vr):.2f}%</span></div>
       </div>
     </div>

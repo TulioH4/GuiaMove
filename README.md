@@ -75,8 +75,8 @@ Na primeira vez que um exercício é iniciado depois de abrir o programa, há um
 | Exercício | O que avalia | Extra |
 |---|---|---|
 | **Agachamento** (`squat`) | valgo do joelho, inclinação lateral do tronco, simetria entre os joelhos | conta repetições (meta: 5), avisa quando a repetição não vale, por exemplo se ficou raso |
-| **Postura estática** (`stand`) | simetria de ombros e quadril, inclinação do tronco | avaliação em pé, sem contagem |
-| **Equilíbrio unipodial** (`balance`) | elevação da perna, oscilação do tronco, queda do quadril (Trendelenburg) | avisa risco de queda |
+| **Postura em pé** (`stand`) | simetria de ombros e quadril, inclinação do tronco | avaliação em pé, sem contagem |
+| **Equilíbrio em uma perna** (`balance`) | elevação da perna, oscilação do tronco, queda do quadril (Trendelenburg) | avisa quando o corpo balança |
 
 ## Início rápido
 
@@ -148,9 +148,12 @@ Clique em **Controle por voz** no cabeçalho do painel e permita o microfone. De
 | **"agachamento"**, **"equilíbrio"**, **"postura"** | escolhe o exercício (só com a sessão parada ou pausada) |
 | **"aumentar volume"** / **"diminuir volume"** | ajusta o volume |
 | **"falar mais rápido"** / **"falar mais devagar"** | ajusta a velocidade da voz |
+| **"repetir"** | o sistema repete a última coisa que falou (correção, instrução ou confirmação) |
 | **"ajuda"** | o sistema lê os comandos disponíveis |
 
 O sistema ignora o eco da própria voz, e frases longas nunca contam como comando.
+
+Quem não vê a tela também ganha um sinal sonoro: **um toque curto** quando um comando é entendido e **dois toques descendo** quando uma frase curta não foi entendida (no máximo um a cada 4 segundos). Dá para desligar em *Configuração → Sons ao ouvir comandos*, útil em ambiente barulhento.
 
 ## Estrutura do projeto
 
@@ -168,7 +171,7 @@ O sistema ignora o eco da própria voz, e frases longas nunca contam como comand
 │   ├── calibration_manager.py    calibração falada do enquadramento
 │   ├── skeleton.py               pontos do corpo e métricas biomecânicas
 │   └── filters.py                One Euro Filter
-├── exercises/                    agachamento, postura estática e equilíbrio
+├── exercises/                    agachamento, postura em pé e equilíbrio
 ├── audio/                        coordenação de fala, motores de voz e bipes
 ├── web/                          servidor Flask/Socket.IO e o dashboard (com o boneco 3D; three.js e socket.io em static/vendor, a logo em static/brand)
 ├── reports/                      relatório da sessão (CSV e página HTML)

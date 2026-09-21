@@ -104,6 +104,7 @@ header::before{content:"";position:absolute;left:0;right:0;top:0;height:4px;back
 .fbbar.error{background:var(--rd);border-color:var(--red);color:var(--red)}
 .fb-icon{font-size:16px;flex-shrink:0;margin-top:1px}
 .fbbar.ok .fb-icon{color:var(--green)}
+.fbbar.ok .fb-icon.idle{color:var(--text2)}
 
 /* ══ Seção superior: câmera + boneco 3D lado a lado, mesma proporção ══ */
 .live-row{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:18px}
@@ -320,8 +321,8 @@ code{background:var(--bg4);color:var(--title);padding:2px 7px;border-radius:4px;
 <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px;flex-wrap:wrap">
   <div class="exs" style="margin-bottom:0;flex:1">
     <button class="exb active" data-ex="squat"   onclick="setEx(this)"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12.6" cy="4.4" r="1.9"/><path d="M12.2 7.5 9.7 13"/><path d="m9.7 13 6.2-.8-.8 6.9"/><path d="m12.3 8.4 5.4 1.8"/><path d="M13.6 19.2h3"/></svg>Agachamento</button>
-    <button class="exb"        data-ex="stand"   onclick="setEx(this)"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="4.6" r="2"/><path d="M7.2 10.2 12 8.2l4.8 2"/><path d="M12 8.2v6"/><path d="m12 14.2-2.7 6.2M12 14.2l2.7 6.2"/></svg>Postura estática</button>
-    <button class="exb"        data-ex="balance" onclick="setEx(this)"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="4.6" r="2"/><path d="M5.5 10h13"/><path d="M12 8.2v6"/><path d="m12 14.2-.6 6.2"/><path d="m12 14.2 4.3 1.3-1.1 3.6"/></svg>Equilíbrio unipodial</button>
+    <button class="exb"        data-ex="stand"   onclick="setEx(this)"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="4.6" r="2"/><path d="M7.2 10.2 12 8.2l4.8 2"/><path d="M12 8.2v6"/><path d="m12 14.2-2.7 6.2M12 14.2l2.7 6.2"/></svg>Postura em pé</button>
+    <button class="exb"        data-ex="balance" onclick="setEx(this)"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="4.6" r="2"/><path d="M5.5 10h13"/><path d="M12 8.2v6"/><path d="m12 14.2-.6 6.2"/><path d="m12 14.2 4.3 1.3-1.1 3.6"/></svg>Equilíbrio em uma perna</button>
   </div>
   <button class="hbtn" id="btnSetup" onclick="startSetup()" title="Verifica se você está de corpo inteiro no enquadramento da câmera, com orientação por voz">
     <svg class="i" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8.2"/><circle cx="12" cy="12" r="4.2"/><circle cx="12" cy="12" r=".7" fill="currentColor"/></svg>Iniciar configuração
@@ -339,7 +340,7 @@ code{background:var(--bg4);color:var(--title);padding:2px 7px;border-radius:4px;
 
 <!-- Feedback bar -->
 <div class="fbbar ok" id="fb" role="status" aria-live="polite" aria-atomic="true">
-  <span class="fb-icon" id="fbIcon">✔</span>
+  <span class="fb-icon idle" id="fbIcon">ℹ</span>
   <span id="fbText">Aguardando dados do Kinect...</span>
 </div>
 
@@ -383,7 +384,7 @@ code{background:var(--bg4);color:var(--title);padding:2px 7px;border-radius:4px;
     </div>
     <div class="live-foot">
       <span>Confiança: <b id="confVal">—</b></span>
-      <span>Frames: <b id="frameCount">0</b></span>
+      <span>Quadros: <b id="frameCount">0</b></span>
       <span id="detStatus" style="color:var(--text3)">sem detecção</span>
     </div>
   </div>
@@ -439,17 +440,17 @@ code{background:var(--bg4);color:var(--title);padding:2px 7px;border-radius:4px;
         <span class="gauge-val" id="gTrV">0.0°</span>
       </div>
       <div class="gauge-row">
-        <span class="gauge-lbl">Joelho esq. (valgo)</span>
+        <span class="gauge-lbl">Joelho esq. (para dentro)</span>
         <div class="gauge-track"><div class="gauge-center"></div><div class="gauge-fill" id="gVL" style="left:50%;width:0;background:var(--green)"></div></div>
         <span class="gauge-val" id="gVLV">0.0</span>
       </div>
       <div class="gauge-row">
-        <span class="gauge-lbl">Joelho dir. (valgo)</span>
+        <span class="gauge-lbl">Joelho dir. (para dentro)</span>
         <div class="gauge-track"><div class="gauge-center"></div><div class="gauge-fill" id="gVR" style="left:50%;width:0;background:var(--green)"></div></div>
         <span class="gauge-val" id="gVRV">0.0</span>
       </div>
       <div class="gauge-row">
-        <span class="gauge-lbl">Verticalidade tronco</span>
+        <span class="gauge-lbl">Tronco fora da vertical</span>
         <div class="gauge-track"><div class="gauge-center"></div><div class="gauge-fill" id="gVt" style="left:50%;width:0;background:var(--green)"></div></div>
         <span class="gauge-val" id="gVtV">0.0°</span>
       </div>
@@ -459,26 +460,26 @@ code{background:var(--bg4);color:var(--title);padding:2px 7px;border-radius:4px;
         <div class="metric">
           <div class="ml">Ângulo joelho esq.</div>
           <div class="mv ok" id="mKneeL">180°</div>
-          <div class="ms">180° = alinhado</div>
+          <div class="ms">180° = perna esticada</div>
         </div>
         <div class="metric">
           <div class="ml">Ângulo joelho dir.</div>
           <div class="mv ok" id="mKneeR">180°</div>
-          <div class="ms">180° = alinhado</div>
+          <div class="ms">180° = perna esticada</div>
         </div>
       </div>
 
       <!-- Profundidade Kinect -->
       <div style="margin-top:12px;padding-top:12px;border-top:1px solid var(--border);display:flex;gap:10px">
         <div class="metric" style="flex:1;padding:10px">
-          <div class="ml">Depth joelho esq.</div>
+          <div class="ml">Profundidade do joelho esq.</div>
           <div class="mv" id="mDepthL" style="font-size:16px;color:var(--purple)">—</div>
-          <div class="ms">m (Kinect IR)</div>
+          <div class="ms">distância até a câmera</div>
         </div>
         <div class="metric" style="flex:1;padding:10px">
-          <div class="ml">Depth joelho dir.</div>
+          <div class="ml">Profundidade do joelho dir.</div>
           <div class="mv" id="mDepthR" style="font-size:16px;color:var(--purple)">—</div>
-          <div class="ms">m (Kinect IR)</div>
+          <div class="ms">distância até a câmera</div>
         </div>
       </div>
     </div>
@@ -516,6 +517,17 @@ code{background:var(--bg4);color:var(--title);padding:2px 7px;border-radius:4px;
               </label>
               <span style="font-size:13px;color:var(--text)">Voz ativada</span>
             </div>
+          </div>
+
+          <div class="vrow">
+            <div class="vtoggle">
+              <label class="toggle-switch">
+                <input type="checkbox" id="voiceEarcons" aria-label="Sons ao ouvir comandos de voz" checked onchange="saveEarcons()">
+                <div class="toggle-slider"></div>
+              </label>
+              <span style="font-size:13px;color:var(--text)">Sons ao ouvir comandos</span>
+            </div>
+            <div style="font-size:12px;color:var(--text3);margin-top:2px">Um toque curto quando o comando é entendido e dois toques descendo quando não é. Desligue se o ambiente estiver barulhento.</div>
           </div>
 
           <div class="vrow">
@@ -594,7 +606,7 @@ code{background:var(--bg4);color:var(--title);padding:2px 7px;border-radius:4px;
           </div>
 
           <div style="margin-top:14px;padding:12px;background:var(--bg3);border-radius:var(--rs);font-size:12px;color:var(--text2);line-height:1.6">
-            <b style="color:var(--text)">Dica para deficientes visuais:</b><br>
+            <b style="color:var(--text)">Dica para pessoas com deficiência visual:</b><br>
             Velocidade entre 130–160 e volume máximo oferecem a melhor compreensão.
             Ative "Confirmar quando corrigir" para reforço positivo.
           </div>
@@ -617,8 +629,8 @@ code{background:var(--bg4);color:var(--title);padding:2px 7px;border-radius:4px;
   <!-- Log de feedbacks — mesma marcação/lógica de sempre, só reposicionado -->
   <div class="card log-card">
     <div class="ctitle" role="heading" aria-level="2">
-      <span>Log de feedback de áudio</span>
-      <button onclick="clearLog()" aria-label="Limpar o log de feedback de áudio" style="background:none;border:none;color:var(--text3);font-size:11px;cursor:pointer;padding:5px 8px;min-height:24px">limpar</button>
+      <span>Histórico de falas</span>
+      <button onclick="clearLog()" aria-label="Limpar o histórico de falas" style="background:none;border:none;color:var(--text3);font-size:11px;cursor:pointer;padding:5px 8px;min-height:24px">limpar</button>
     </div>
     <div class="ttslog" id="ttslog" role="log" aria-live="polite">
       <div class="ttsentry"><span class="ttime">--:--</span><span class="tmsg">Aguardando...</span></div>
@@ -848,6 +860,11 @@ class AudioClient {
       setTimeout(start, this._pending > 1 ? 60 : 0);
     }
   }
+  // Texto da última fala do app (a mais recente do registro de eco). Serve ao comando "repetir".
+  ultimaFala() {
+    const s = this._spoken[this._spoken.length - 1];
+    return s ? s.text : "";
+  }
   // O sistema está falando (ou acabou de falar, dentro da folga pro eco
   // acústico/latência do reconhecedor)? Cobre TODA fala do app — as
   // enviadas pelo servidor também, não só as do controle por voz.
@@ -923,11 +940,15 @@ class AudioClient {
     const seqs = {
       success: [[587,0.12],[880,0.22]],
       warning: [[220,0.40]],
+      // Controle por voz (o 3º número é o volume; mais baixos que os de estado):
+      // "ouvi" = um toque curto e agudo; "não entendi" = dois toques descendo.
+      heard:    [[784,0.08,0.22]],
+      notheard: [[392,0.09,0.22],[294,0.16,0.22]],
     };
     const seq = seqs[pattern] || seqs.success;
     let delayMs = 0;
-    for (const [freq, dur] of seq) {
-      setTimeout(() => this._tone(freq, 0, dur, 0.35), delayMs);
+    for (const [freq, dur, gain] of seq) {
+      setTimeout(() => this._tone(freq, 0, dur, gain ?? 0.35), delayMs);
       delayMs += (dur + 0.05) * 1000;
     }
   }
@@ -1168,8 +1189,11 @@ function updateFrame(d) {
   // leitor de tela repetir a fala ou engasgar. Só escreve quando algo mudou de fato.
   const fbClass = "fbbar " + (d.severity || "ok");
   if (fb.className !== fbClass) fb.className = fbClass;
-  const fbIcon = icons[d.severity] || "✔";
+  // Esperando ou pausado o texto é neutro ("Aguardando início do exercício."): ✔ dava a ideia de "tudo certo".
+  const neutro = (!d.severity || d.severity === "ok") && (d.session_state === "stopped" || d.session_state === "paused");
+  const fbIcon = neutro ? (d.session_state === "paused" ? "⏸" : "ℹ") : (icons[d.severity] || "✔");
   if ($id("fbIcon").textContent !== fbIcon) $id("fbIcon").textContent = fbIcon;
+  $id("fbIcon").classList.toggle("idle", neutro);
   const fbText = d.feedback || "Aguardando...";
   if ($id("fbText").textContent !== fbText) $id("fbText").textContent = fbText;
 
@@ -1553,8 +1577,19 @@ function resetVoice() {
   document.getElementById("voiceEnabled").checked     = true;
   document.getElementById("confirmCorrection").checked = true;
   document.getElementById("voiceSelect").value = "";   // volta pra "Auto (pt-BR)"
+  document.getElementById("voiceEarcons").checked = true;
+  saveEarcons();
   saveVoice();
 }
+
+// "Sons ao ouvir comandos": só existe no navegador (não vai ao servidor), então fica no localStorage.
+function saveEarcons() {
+  try { localStorage.setItem("seemove_voice_earcons", document.getElementById("voiceEarcons").checked ? "1" : "0"); } catch (e) {}
+}
+(function restoreEarcons() {
+  const el = document.getElementById("voiceEarcons");
+  try { if (el && localStorage.getItem("seemove_voice_earcons") === "0") el.checked = false; } catch (e) {}
+})();
 
 function applyVoiceUI(d) {
   if (d.enabled !== undefined) document.getElementById("voiceEnabled").checked = d.enabled;
@@ -2760,6 +2795,27 @@ loadVoiceSettings();
   let voiceControlActive = false;
   let lastVoiceConfirmation = "";
 
+  // Sons do controle por voz: um toque = "ouvi o comando"; dois toques descendo = "ouvi, mas não entendi".
+  // Quem não vê a tela não tem outro sinal de que foi ouvido. O "não entendi" só vale para frases curtas
+  // (até 3 palavras; conversa comprida perto do microfone continua em silêncio) e no máximo 1 a cada 4 s.
+  // Dá para desligar na aba Configuração ("Sons ao ouvir comandos"), útil em ambiente barulhento.
+  let _ultimoNaoEntendi = 0;
+  function sonsDeComandoAtivos() {
+    const el = document.getElementById("voiceEarcons");
+    return !el || el.checked;
+  }
+  function sinalOuvi() {
+    if (sonsDeComandoAtivos()) audioClient.chime("heard");
+  }
+  function sinalNaoEntendi(texto) {
+    if (!sonsDeComandoAtivos()) return;
+    if (texto.split(" ").filter(Boolean).length > 3) return;
+    const agora = Date.now();
+    if (agora - _ultimoNaoEntendi < 4000) return;
+    _ultimoNaoEntendi = agora;
+    audioClient.chime("notheard");
+  }
+
   // Guarda contra eco: o microfone continua ligado enquanto o sistema fala
   // (de propósito, pra "parar" interromper mesmo no meio de uma fala), mas
   // isso significa que a própria voz do app pode ser captada de volta como
@@ -3009,6 +3065,7 @@ loadVoiceSettings();
       const btn = document.getElementById("btnStart");
       if (btn && !btn.disabled) {
         console.log("[COMANDO] ▶️ Iniciar exercício");
+        sinalOuvi();
         startExercise();
       } else {
         voiceSpeak("Não é possível iniciar agora.");
@@ -3020,6 +3077,7 @@ loadVoiceSettings();
       const btn = document.getElementById("btnPause");
       if (btn && !btn.disabled && !_paused) {
         console.log("[COMANDO] ⏸️ Pausar exercício");
+        sinalOuvi();
         pauseOrResume();
       } else {
         voiceSpeak("Não há exercício em andamento para pausar.");
@@ -3032,6 +3090,7 @@ loadVoiceSettings();
       const btn = document.getElementById("btnPause");
       if (btn && !btn.disabled && _paused) {
         console.log("[COMANDO] ▶️ Continuar exercício");
+        sinalOuvi();
         pauseOrResume();
       } else {
         voiceSpeak("Não há exercício pausado para continuar.");
@@ -3057,32 +3116,34 @@ loadVoiceSettings();
       return;
     }
     if (texto.includes("equilibrio")) {
-      selecionarExercicio("balance", "Equilíbrio unipodial");
+      selecionarExercicio("balance", "Equilíbrio em uma perna");
       return;
     }
     if (texto.includes("postura")) {
-      selecionarExercicio("stand", "Postura estática");
+      selecionarExercicio("stand", "Postura em pé");
       return;
     }
 
     // Ajuda
     if (texto === "ajuda" || texto.includes("o que posso fazer") || texto.includes("comandos")) {
       voiceSpeak(
-        "Você pode dizer: aumentar volume, diminuir volume, falar mais rápido, " +
-        "falar mais devagar, iniciar, pausar, continuar, parar, agachamento, " +
-        "equilíbrio ou postura."
+        "Você pode dizer: iniciar, pausar, continuar ou parar. " +
+        "Para trocar de exercício: agachamento, equilíbrio ou postura. " +
+        "Para ajustar a voz: aumentar volume, diminuir volume, falar mais rápido ou falar mais devagar. " +
+        "E repetir, para ouvir a última fala de novo."
       );
       return;
     }
 
-    // Repetir a última confirmação falada
-    if (texto === "repetir" || texto.includes("repita")) {
-      if (lastVoiceConfirmation) voiceSpeak(lastVoiceConfirmation);
+    // Repetir a última fala do app (correção, instrução ou confirmação)
+    if (texto === "repetir" || texto.includes("repita") || texto.includes("repete")) {
+      voiceSpeak(audioClient.ultimaFala() || lastVoiceConfirmation || "Ainda não falei nada.");
       return;
     }
 
-    // Comando não reconhecido — fica em silêncio de propósito, pra não
-    // ficar falando toda vez que o usuário conversa perto do microfone.
+    // Comando não reconhecido — não FALA (pra não ficar falando toda vez que o usuário conversa perto do
+    // microfone), mas dá o toque discreto de "não entendi" quando foi uma frase curta.
+    sinalNaoEntendi(texto);
     console.log("[VOZ] ❔ Comando não reconhecido:", texto);
   }
 

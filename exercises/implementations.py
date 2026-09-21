@@ -518,7 +518,7 @@ class StaticPostureExercise(Exercise):
       - Inclinação de tronco > 5° → alerta; > 10° → erro
       - Verticalidade do tronco > 10° → desvio postural
     """
-    name          = "Postura estática"
+    name          = "Postura em pé"
     start_message = (
         "Avaliação postural. Fique em pé de forma natural, "
         "olhar no horizonte, braços soltos ao lado do corpo."
@@ -657,7 +657,7 @@ class UnipodialBalanceExercise(Exercise):
       - Inclinação do tronco > 20° → risco de queda
       - Inclinação do quadril > 5° → sinal de Trendelenburg
     """
-    name          = "Equilíbrio unipodial"
+    name          = "Equilíbrio em uma perna"
     start_message = (
         "Equilíbrio em uma perna. Encontre um ponto fixo na sua frente. "
         "Quando estiver pronto, eleve uma perna devagar e mantenha."
