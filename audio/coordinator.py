@@ -35,6 +35,20 @@ from exercises.base import Severity
 # em rate relativo (1.0 = normal) para SpeechSynthesisUtterance.rate no browser
 _REFERENCE_WPM = 145.0
 
+# Duração estimada de uma fala no navegador — SOBRESTIMADA de propósito. É um TETO: o navegador confirma o fim real
+# ("audio_done" → speech_finished()) e isso só ENCURTA. Uma estimativa curta demais faz quem pergunta "ainda está
+# falando?" (calibração, fim do briefing) achar que acabou e cortar a fala no meio: "Seus pés não aparecem…" cortava
+# "Vamos calibrar o enquadramento…" porque a conta por nº de palavras ignorava a latência da voz e as pausas entre frases.
+# Medido no navegador com a voz Microsoft Maria (pt-BR, ritmo 1,0): 0,10 a 0,15 s por caractere no total; a abertura da
+# calibração (74 caracteres) leva 7,5 s com a página parada e 11 s com o painel recebendo quadros e desenhando o boneco
+# (o navegador atrasa o início de cada frase); "Série completa, 5 repetições. Bom trabalho!" leva 6,4 s. A conta por nº
+# de palavras dava 5,0 s e 2,9 s. As constantes abaixo ficam acima de todos os tempos medidos, inclusive sob carga.
+_SPEECH_S_PER_CHAR = 0.14    # tempo por caractere no ritmo normal
+_SPEECH_STARTUP_S  = 1.0     # do envio até a voz começar (cancelamento, latência da voz)
+_SPEECH_SENTENCE_S = 0.6     # pausa/sobra por frase
+_SPEECH_COMMA_S    = 0.3     # pausa por vírgula
+_SPEECH_DIGIT_S    = 0.4     # cada dígito é falado como palavra ("5" → "cinco")
+
 
 class AudioCoordinator:
     def __init__(self, tts, sonification, voice_settings, sonification_enabled: bool = True,
@@ -81,6 +95,7 @@ class AudioCoordinator:
 
     def _push_speak(self, message: str, cancel: bool):
         rate_ratio = max(0.5, min(2.5, self.voice_settings.rate / _REFERENCE_WPM))
+        now = time.time()
         self._speech_id += 1
         self.remote_push("audio_speak", {
             "id": self._speech_id,
@@ -89,13 +104,28 @@ class AudioCoordinator:
             "volume": self.voice_settings.volume,
             "cancel": cancel,
         })
-        # Estimativa de duração da fala (~ rate wpm) — teto usado por
-        # wait_speech_done()/is_speaking() enquanto o navegador não confirma
-        # o fim real (speech_finished()); sem nenhum navegador aberto, ela
-        # continua sendo a única fonte.
-        words = max(1, len(message.split()))
-        duration = max(0.8, words / (self.voice_settings.rate / 60.0))
-        self._remote_speech_done_ts = time.time() + duration
+        # Teto de duração usado por wait_speech_done()/is_speaking() enquanto o navegador não confirma o fim real
+        # (speech_finished()); sem nenhum navegador aberto, é a única fonte. Uma fala que ENTRA NA FILA
+        # (cancel=False) só começa quando a atual terminar, então a duração se soma à que já estava pendente.
+        start = now if cancel else max(now, self._remote_speech_done_ts)
+        self._remote_speech_done_ts = start + self._estimate_speech_s(message, rate_ratio)
+
+    @staticmethod
+    def _estimate_speech_s(message: str, rate_ratio: float) -> float:
+        frases = max(1, sum(message.count(c) for c in ".!?"))
+        virgulas = message.count(",")
+        digitos = sum(ch.isdigit() for ch in message)
+        return (max(1.0, len(message) * _SPEECH_S_PER_CHAR / rate_ratio) + _SPEECH_STARTUP_S
+                + _SPEECH_SENTENCE_S * frases + _SPEECH_COMMA_S * virgulas + _SPEECH_DIGIT_S * digitos)
+
+    # Fala pendente (em curso + na fila) acima disto: uma mensagem NÃO urgente nova é descartada em vez de entrar
+    # atrasada demais na fila (a correção seria dita depois de a pessoa já ter mudado de movimento).
+    MAX_BACKLOG_S = 30.0
+
+    def _backlog_s(self) -> float:
+        if not self._is_remote():
+            return 0.0
+        return max(0.0, self._remote_speech_done_ts - time.time())
 
     def speech_finished(self, speech_id: int):
         """O navegador avisa que terminou (ou teve cortada) a fala `speech_id`.
@@ -106,19 +136,21 @@ class AudioCoordinator:
             self._remote_speech_done_ts = min(self._remote_speech_done_ts, time.time())
 
     def emit(self, message: str, severity: Severity, direction_hint: float = 0.0,
-              bypass_cooldown: bool = False, cancel: bool = True) -> bool:
+              bypass_cooldown: bool = False, cancel: bool = False) -> bool:
         """
         Emite feedback (bipe + fala) respeitando o cooldown da severidade.
         Retorna True se de fato emitiu, False se suprimido pelo cooldown.
 
-        `cancel=False` (modo remoto/navegador) faz a fala entrar na fila do
-        speechSynthesis em vez de cortar o que já está tocando — usado pela
-        confirmação positiva ("muito bem"), que nunca deveria interromper a
-        frase de correção ainda em andamento: a correção já cumpriu seu
-        papel a essa altura (foi por isso que confirmou), então cortá-la no
-        meio só soa como um bug, não some nenhuma informação nova.
+        `cancel=False` (padrão; modo remoto/navegador) faz a fala entrar na fila do
+        speechSynthesis em vez de cortar o que já está tocando. Antes só a
+        confirmação positiva era assim; correções e reforços cortavam a fala em curso
+        (uma repetição explicada pela metade, o "Bom trabalho" da série) e quem não
+        enxerga perdia a frase. Se já há fala demais pendente (MAX_BACKLOG_S), a
+        mensagem é descartada: a máquina de estados repete a correção depois.
         """
         if not message:
+            return False
+        if self._backlog_s() > self.MAX_BACKLOG_S:
             return False
 
         now = time.time()
@@ -147,19 +179,25 @@ class AudioCoordinator:
 
         return True
 
-    def speak_now(self, message: str, severity: Severity = Severity.OK):
-        """Bypassa fila/cooldown — usado para alertas críticos (ex.: perda de câmera)
-        e para falas fora do ciclo normal de correção (briefing, calibração de
-        enquadramento). `severity` só afeta a cor da entrada no log visual."""
+    def speak_now(self, message: str, severity: Severity = Severity.OK, interrupt: bool = True):
+        """Bypassa o cooldown — usado para alertas críticos (ex.: perda de câmera), respostas a uma
+        ação do usuário e falas fora do ciclo normal de correção (briefing, calibração).
+        `interrupt=True` (padrão) corta a fala em curso; `interrupt=False` entra na fila e fala DEPOIS dela
+        (avisos que não podem atropelar a fala em andamento: instruções da calibração, resultado de
+        repetição) e é descartada se já há fala demais pendente. `severity` só afeta a cor no log visual."""
         if not message:
             return
         self.stop_ambient()
         if not self.voice_settings.enabled:
             return
+        if not interrupt and self._backlog_s() > self.MAX_BACKLOG_S:
+            return
         if self._is_remote():
-            self._push_speak(message, cancel=True)
-        else:
+            self._push_speak(message, cancel=interrupt)
+        elif interrupt:
             self.tts.speak_now(message)
+        else:
+            self.tts.speak(message)
         self._log(message, severity.value)
 
     def is_speaking(self) -> bool:

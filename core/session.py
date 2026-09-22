@@ -93,7 +93,7 @@ class Session:
     WAIT_WINDOW_S  = 5.0
     CONFIRM_FRAMES = 8       # frames OK consecutivos para confirmar
     REINFORCE_MAX  = 2       # máximo de reforços antes de pausa longa
-    BRIEFING_TIMEOUT_S = 40.0   # cobre briefings longos (agachamento ~20s falado)
+    BRIEFING_TIMEOUT_S = 120.0  # teto de espera: agachamento ~30 s falado no ritmo normal (estimado 49 s); até ~90 s na voz mais lenta
     BROADCAST_MAX_FPS  = 30
     # A captura/boneco roda a até 30 Hz, mas toda a lógica de exercício
     # (fases, confirmação por N frames, reforço, reporter) foi calibrada em
@@ -237,7 +237,9 @@ class Session:
         # `intro` (ex.: "Enquadramento perfeito. " vindo da calibração) vai
         # NA MESMA fala do briefing: duas falas seguidas com cancel=True se
         # cortavam — a primeira nem chegava a ser ouvida.
-        self.audio.speak_now(intro + exercise.start_message)
+        # Vindo da calibração (`intro`) entra na FILA: a abertura ou a última instrução ainda pode estar no ar e a
+        # estimativa de "acabou" pode errar para menos; "Iniciar" pedido pela pessoa continua cortando o que falava.
+        self.audio.speak_now(intro + exercise.start_message, interrupt=not intro)
 
         threading.Thread(target=self._finish_briefing, daemon=True).start()
 
@@ -281,7 +283,7 @@ class Session:
                 self._set_state(FeedbackState.STOPPED)
             self.audio.speak_now(
                 "Enquadramento perfeito! Você já pode iniciar o exercício "
-                "por comando de voz.", Severity.OK)
+                "por comando de voz.", Severity.OK, interrupt=False)
 
     def pause_exercise(self):
         """Muda a análise/áudio imediatamente, sem perder o exercício ativo."""
@@ -548,13 +550,13 @@ class Session:
                     msg = f"Primeira repetição contou.{issue_tail} {mais}."
                 else:
                     msg = f"Primeira repetição contou, ritmo bom. {mais}, no mesmo ritmo."
-                self.audio.speak_now(msg, Severity.WARN if issue else Severity.OK)
+                self.audio.speak_now(msg, Severity.WARN if issue else Severity.OK, interrupt=False)
             elif remaining == 0:
                 self.audio.speak_now(
                     f"Série completa, {target} repetições. Bom trabalho!" + issue_tail,
-                    Severity.OK)
+                    Severity.OK, interrupt=False)
             elif issue and not self.audio.is_speaking():
-                self.audio.speak_now("Contou." + issue_tail, Severity.WARN)
+                self.audio.speak_now("Contou." + issue_tail, Severity.WARN, interrupt=False)
 
         if rejected is not None and rejected != self._last_rejected_reps:
             self._last_rejected_reps = rejected
@@ -564,7 +566,7 @@ class Session:
                 "rapida_demais": "Não contou, foi rápido demais. Desça contando até dois e suba contando até dois.",
                 "lenta_demais":  "Não contou, foi devagar demais. Tente um ritmo mais contínuo, dois tempos para descer e dois para subir.",
             }.get(cadence, "Não contou — cadência irregular.")
-            self.audio.speak_now(dica + issue_tail + remaining_tail(), Severity.WARN)
+            self.audio.speak_now(dica + issue_tail + remaining_tail(), Severity.WARN, interrupt=False)
 
         posture_rej = getattr(self.exercise, "posture_rejected_reps", 0)
         if posture_rej != self._last_posture_rej:
@@ -572,7 +574,7 @@ class Session:
             self.audio.chime("warning")
             self.audio.speak_now(
                 "Não contou por causa da postura." + issue_tail + remaining_tail(),
-                Severity.WARN)
+                Severity.WARN, interrupt=False)
 
         if shallow != self._last_shallow_reps:
             self._last_shallow_reps = shallow
@@ -580,7 +582,7 @@ class Session:
             self.audio.speak_now(
                 "Não contou, você não desceu o bastante. Dobre mais os joelhos, "
                 "como se fosse sentar numa cadeira, e depois suba."
-                + issue_tail + remaining_tail(), Severity.WARN)
+                + issue_tail + remaining_tail(), Severity.WARN, interrupt=False)
 
     # ── Estágio 3: broadcast Socket.IO, limitado a BROADCAST_MAX_FPS ───────
 
@@ -649,7 +651,12 @@ class Session:
             else:
                 self._ok_frames = 0
                 self.audio.ambient_tick(direction, 0.0)
-                if elapsed >= self.WAIT_WINDOW_S:
+                if self.audio.is_speaking():
+                    # A pessoa só pode reagir depois de ouvir a instrução INTEIRA: a janela de espera conta a partir
+                    # do fim da fala. Antes contava do início e o reforço (a mesma frase) cortava a correção ainda
+                    # em andamento — ou recomeçava no mesmo instante em que ela terminava.
+                    self._state_since = time.time()
+                elif elapsed >= self.WAIT_WINDOW_S:
                     self._set_state(FeedbackState.REINFORCING)
                     self._reinforce_count += 1
                     if self._reinforce_count <= self.REINFORCE_MAX:

@@ -211,6 +211,8 @@ class CalibrationManager:
         self._issue_since: Optional[float] = None
         self._issue_type: Optional[FramingIssue] = None
         self._last_instruction_ts = 0.0
+        self._last_spoken_issue: Optional[FramingIssue] = None
+        self._last_busy_ts = 0.0
         self._done = False
 
     def start(self):
@@ -219,6 +221,8 @@ class CalibrationManager:
         self._issue_since = None
         self._issue_type = None
         self._last_instruction_ts = 0.0
+        self._last_spoken_issue = None
+        self._last_busy_ts = 0.0
         self._done = False
 
     def feed(self, frame: SkeletonFrame) -> FramingResult:
@@ -234,6 +238,11 @@ class CalibrationManager:
             if self._ok_since is None:
                 self._ok_since = now
             elif now - self._ok_since >= self.STABILITY_S:
+                # Espera a fala em curso (abertura ou instrução) acabar: a frase de sucesso corta a anterior e, para
+                # quem já chega enquadrado, cortava "Vamos calibrar o enquadramento…" no meio (a abertura leva ~5 s;
+                # a estabilidade, só 3 s).
+                if self.audio.is_speaking():
+                    return result
                 self._done = True
                 self.audio.chime("success")
                 # A fala de conclusão é da Session (_on_calibration_success):
@@ -256,9 +265,19 @@ class CalibrationManager:
         # mais curto que a fala de abertura). Se ainda está falando, o
         # timer do cooldown NÃO avança — assim que a fala termina, o
         # próximo frame já pode avisar, sem esperar mais 4.5s por cima.
-        if (issue_stable
-                and now - self._last_instruction_ts >= self.INSTRUCTION_COOLDOWN_S
-                and not self.audio.is_speaking()):
+        speaking = self.audio.is_speaking()
+        if speaking:
+            self._last_busy_ts = now
+        # A MESMA instrução repetida conta a pausa a partir do FIM da fala: ela dura mais que o cooldown e,
+        # contando do início, recomeçava no mesmo instante em que terminava. Um problema DIFERENTE fala assim
+        # que a fala em curso acaba.
+        ref = self._last_instruction_ts
+        if result.issue == self._last_spoken_issue:
+            ref = max(ref, self._last_busy_ts)
+        if issue_stable and now - ref >= self.INSTRUCTION_COOLDOWN_S and not speaking:
             self._last_instruction_ts = now
-            self.audio.speak_now(result.message, Severity.WARN)
+            self._last_spoken_issue = result.issue
+            # interrupt=False: se a estimativa de "acabou de falar" errar para menos, a instrução entra na fila
+            # em vez de cortar a fala em curso no meio.
+            self.audio.speak_now(result.message, Severity.WARN, interrupt=False)
         return result
