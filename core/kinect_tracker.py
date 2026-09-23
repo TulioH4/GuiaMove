@@ -54,6 +54,23 @@ def _edge_gated(x: float, y: float, vis: float) -> float:
     return vis * max(0.0, 1.0 - outside / EDGE_FADE)
 
 
+def _sanity_legs(points: Dict[int, Point3D]):
+    """Um tornozelo aparecer ACIMA do próprio joelho na imagem nunca é uma pose real, nos três
+    exercícios monitorados (agachamento, postura em pé, equilíbrio numa perna: sempre de pé). No
+    fundo de um agachamento com a câmera baixa/perto, o tornozelo é o ponto que o MediaPipe mais
+    perde — medido em vídeo real (2026-09-23): 9 quadros seguidos com o tornozelo esquerdo 3 a 6%
+    da altura da imagem ACIMA do joelho (visibility ainda passando de MIN_VIS, então nada barrava
+    antes), o ângulo do joelho saiu como 0,03° (impossível) e o boneco 3D — que usa os mesmos
+    pontos — abriu as pernas de um jeito bem estranho nesses quadros. Trata como se o ponto não
+    tivesse sido detectado (visibilidade zerada): a suavização segura a última posição boa em vez
+    de pular pro lugar errado — mesma solução já usada pros pontos que saem da imagem (EDGE_FADE).
+    Só entra em ação se o JOELHO em si estiver confiável (senão a comparação não vale nada)."""
+    for ankle_i, knee_i in ((L_ANKLE, L_KNEE), (R_ANKLE, R_KNEE)):
+        a, k = points.get(ankle_i), points.get(knee_i)
+        if a and k and k.visible and a.y < k.y:
+            points[ankle_i] = Point3D(x=a.x, y=a.y, z=a.z, visibility=0.0, real_z=a.real_z)
+
+
 class KinectTracker:
     JPEG_QUALITY = 60
 
@@ -238,18 +255,39 @@ class KinectTracker:
         if self._sdk_bridge:
             self._sdk_bridge.stop()
             self._sdk_bridge = None
-        if self._pose:
-            try:
-                self._pose.close()
-            except Exception:
-                pass
-            self._pose = None
+        self._close_pose_async()
         if self._cap:
             try:
                 self._cap.release()
             except Exception:
                 pass
             self._cap = None
+
+    def _close_pose_async(self):
+        """Fecha o detector do MediaPipe (Tasks API) SEM bloquear quem chamou.
+
+        `PoseLandmarker.close()` tenta mandar estatística de uso pro Google ("clearcut") antes de
+        devolver — sem internet (ou com a rede falhando em resolver o endereço), ele trava ~10 s
+        esperando essa tentativa desistir. Medido isolado, sem nenhum código deste projeto: criar
+        e fechar o detector duas vezes seguidas deu 10,10 s e 10,09 s de close(), sempre. Isso
+        travava a PRÓPRIA THREAD DE CAPTURA (o vídeo/boneco congelava ~10 s ao clicar em "Resetar
+        pose", via reset_smoothing → _rebuild_landmarker) e o pedido HTTP de Desconectar câmera —
+        na feira, sem internet confiável, os dois podiam travar ao vivo sem nenhum aviso. Fechar
+        numa thread solta (só o `close()` em si, sem tocar em mais nada) resolve os dois: quem
+        chamou segue na hora, o detector antigo termina de fechar em segundo plano. Pega e limpa
+        a referência ANTES de disparar a thread — assim uma segunda chamada (a captura terminando
+        sozinha por erro E o disconnect() do usuário quase juntos) nunca fecha o MESMO detector
+        duas vezes."""
+        pose, self._pose = self._pose, None
+        if pose:
+            threading.Thread(target=self._close_pose_now, args=(pose,), daemon=True).start()
+
+    @staticmethod
+    def _close_pose_now(pose):
+        try:
+            pose.close()
+        except Exception:
+            pass
 
     # ── Profundidade ──────────────────────────────────────────────────────
 
@@ -406,13 +444,12 @@ class KinectTracker:
 
     def _rebuild_landmarker(self):
         """Descarta o rastreamento atual e recomeça a detecção do zero
-        (só a thread de captura chama isto)."""
-        try:
-            if self._pose:
-                self._pose.close()
-        except Exception:
-            pass
-        self._pose = self._build_landmarker()
+        (só a thread de captura chama isto). Cria o detector NOVO primeiro e só depois manda
+        fechar o antigo em segundo plano (ver _close_pose_async) — fechar o antigo antes travava
+        esta própria thread (a de captura) por ~10 s sem internet, congelando o vídeo/boneco."""
+        old, self._pose = self._pose, self._build_landmarker()
+        if old:
+            threading.Thread(target=self._close_pose_now, args=(old,), daemon=True).start()
 
     # ── Loop principal ────────────────────────────────────────────────────
 
@@ -615,6 +652,7 @@ class KinectTracker:
             x = 1.0 - lm.x
             points[i] = Point3D(x=x, y=lm.y, z=lm.z,
                                 visibility=_edge_gated(x, lm.y, lm.presence))
+        _sanity_legs(points)
 
         # Desenha esqueleto no BGR — manualmente com cv2 (Tasks API não tem
         # drawing_utils nativo). Só o que o sistema realmente usa: pontos
@@ -702,6 +740,7 @@ class KinectTracker:
             x = 1.0 - lm.x
             points[i] = Point3D(x=x, y=lm.y, z=lm.z,
                                 visibility=_edge_gated(x, lm.y, lm.visibility))
+        _sanity_legs(points)
 
         # Desenha esqueleto com utilitários nativos
         self._drawing.draw_landmarks(
