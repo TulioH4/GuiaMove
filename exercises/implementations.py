@@ -665,15 +665,26 @@ class StaticPostureExercise(Exercise):
 class UnipodialBalanceExercise(Exercise):
     """
     Equilíbrio em uma perna — avalia:
-      - Elevação do joelho da perna levantada (deve superar um limiar)
+      - Elevação de uma das pernas (deve superar um limiar)
       - Oscilação lateral do tronco (instabilidade)
       - Inclinação do quadril (Trendelenburg — sinal de fraqueza glútea)
 
     Parâmetros biomecânicos:
-      - Joelho elevado (y < quadril y - 0.08) → perna levantada confirmada
+      - Perna elevada: diferença de altura entre os DOIS TORNOZELOS > ANKLE_LIFT_THRESHOLD,
+        sustentada por LEG_RAISE_CONFIRM_S (ver _leg_raised — 2026-09-23, trocado de "joelho
+        acima do quadril" para isto, ver a nota abaixo)
       - Inclinação do tronco > 10° → oscilação moderada
       - Inclinação do tronco > 20° → risco de queda
       - Inclinação do quadril > 5° → sinal de Trendelenburg
+
+    2026-09-23: o critério original ("joelho acima do quadril", como um passo de marcha bem alto)
+    nunca abria de verdade — analisando vídeo real de dois testers com o rastreador e o MediaPipe
+    de verdade (não simulado), o pico de "quadril.y − joelho.y" durante uma tentativa GENUÍNA de
+    equilíbrio numa perna foi de -0,05 a +0,06 (ainda abaixo do quadril na maior parte do tempo);
+    o limiar de 0,08 nunca foi alcançado em nenhum quadro dos dois vídeos. O joelho de quem
+    equilibra numa perna normalmente NÃO sobe até a altura do quadril — só o TORNOZELO sobe bem
+    (o pé sai do chão), o que os mesmos vídeos confirmam: diferença de altura entre os tornozelos
+    chegando a 0,09–0,21 nas tentativas reais, contra ruído de ±0,01–0,02 de pé parado.
     """
     name          = "Equilíbrio em uma perna"
     start_message = (
@@ -683,7 +694,13 @@ class UnipodialBalanceExercise(Exercise):
     end_message   = "Equilíbrio concluído. Excelente trabalho."
     description   = "Avalia oscilação, inclinação do quadril e estabilidade do tronco."
 
-    KNEE_LIFT_THRESHOLD   = 0.08   # y do joelho deve estar 8% acima do quadril
+    # Diferença de altura entre os dois tornozelos (fração da imagem) que conta como "pé no ar".
+    # Calibrado com vídeo real (ver nota da classe): bem acima do ruído de pé parado (±0,01–0,02),
+    # bem abaixo do que uma tentativa real alcança (0,09–0,21).
+    ANKLE_LIFT_THRESHOLD  = 0.035
+    # Precisa se manter acima do limiar por este tempo antes de abrir o portão — 1 quadro isolado
+    # de ruído não basta; fechar continua sendo na hora, sem espera (o pé pode ter voltado ao chão).
+    LEG_RAISE_CONFIRM_S   = 0.15
     TRUNK_SWAY_WARN       = 10.0   # graus
     TRUNK_SWAY_ERROR      = 20.0
     HIP_DROP_WARN         = 5.0    # Trendelenburg
@@ -707,27 +724,26 @@ class UnipodialBalanceExercise(Exercise):
             PostureCheck("trendelenburg", self._check_hip_drop),
             PostureCheck("oscilacao_tronco", self._check_trunk_sway),
         ]
+        self._raise_since: Optional[float] = None
 
     def analyze(self, frame: SkeletonFrame) -> FeedbackResult:
         return self.analyze_checks(frame, self._checks, gates=self._gates)
 
     def _leg_raised(self, frame: SkeletonFrame) -> bool:
         pts = frame.points
-        lh, rh = pts.get(L_HIP), pts.get(R_HIP)
-        lk, rk = pts.get(L_KNEE), pts.get(R_KNEE)
-
-        if lh and lk and lh.visible and lk.visible:
-            if lh.y - lk.y > self.KNEE_LIFT_THRESHOLD:
-                return True
-        if rh and rk and rh.visible and rk.visible:
-            if rh.y - rk.y > self.KNEE_LIFT_THRESHOLD:
-                return True
-        return False
+        la, ra = pts.get(L_ANKLE), pts.get(R_ANKLE)
+        if not (la and ra and la.visible and ra.visible) or abs(la.y - ra.y) <= self.ANKLE_LIFT_THRESHOLD:
+            self._raise_since = None
+            return False
+        now = frame.timestamp
+        if self._raise_since is None:
+            self._raise_since = now
+        return now - self._raise_since >= self.LEG_RAISE_CONFIRM_S
 
     def _check_leg_raised(self, frame: SkeletonFrame):
         if not self._leg_raised(frame):
             return FeedbackResult(
-                "Eleve uma perna até a altura do quadril e mantenha a posição.",
+                "Eleve um pé do chão e mantenha o equilíbrio.",
                 True, Severity.WARN,
                 "Nenhuma perna detectada elevada."
             )
