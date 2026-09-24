@@ -94,6 +94,16 @@ class Session:
     CONFIRM_FRAMES = 8       # frames OK consecutivos para confirmar
     REINFORCE_MAX  = 2       # máximo de reforços antes de pausa longa
     BRIEFING_TIMEOUT_S = 120.0  # teto de espera: agachamento ~30 s falado no ritmo normal (estimado 49 s); até ~90 s na voz mais lenta
+    # 2026-09-24: teste real com um aluno cego (ver notas de sessão) — ele ficou perdido esperando
+    # a explicação terminar, sem saber se/quando devia agir. BRIEFING_INTRO avisa ANTES de explicar
+    # o movimento que a vez dele só chega depois; START_CUE fala explicitamente quando chega,
+    # bem no instante em que o estado sai de BRIEFING (ver start_exercise/_finish_briefing). As
+    # mesmas duas falas valem pra qualquer exercício — não fica preso ao texto de cada um.
+    BRIEFING_INTRO = "Vou te explicar o movimento. Quando eu terminar de falar, você começa. "
+    START_CUE      = "Pode começar."
+    PAUSE_CUE      = "Pausado."
+    RESUME_CUE     = "Retomando, pode continuar."
+    STOP_CUE       = "Sessão encerrada."
     BROADCAST_MAX_FPS  = 30
     # A captura/boneco roda a até 30 Hz, mas toda a lógica de exercício
     # (fases, confirmação por N frames, reforço, reporter) foi calibrada em
@@ -236,18 +246,27 @@ class Session:
         # (AudioCoordinator.log_push) — não precisa duplicar aqui.
         # `intro` (ex.: "Enquadramento perfeito. " vindo da calibração) vai
         # NA MESMA fala do briefing: duas falas seguidas com cancel=True se
-        # cortavam — a primeira nem chegava a ser ouvida.
+        # cortavam — a primeira nem chegava a ser ouvida. BRIEFING_INTRO entra
+        # logo depois: avisa ANTES de explicar o movimento que a explicação
+        # vem primeiro e a vez da pessoa só chega no final (ver nota da
+        # constante) — sem isso quem não vê a tela não sabe se já era pra
+        # agir ou se o sistema ainda está falando.
         # Vindo da calibração (`intro`) entra na FILA: a abertura ou a última instrução ainda pode estar no ar e a
         # estimativa de "acabou" pode errar para menos; "Iniciar" pedido pela pessoa continua cortando o que falava.
-        self.audio.speak_now(intro + exercise.start_message, interrupt=not intro)
+        self.audio.speak_now(intro + self.BRIEFING_INTRO + exercise.start_message, interrupt=not intro)
 
         threading.Thread(target=self._finish_briefing, daemon=True).start()
 
     def _finish_briefing(self):
         self.audio.wait_speech_done(timeout=self.BRIEFING_TIMEOUT_S)
         with self._lock:
-            if self._state == FeedbackState.BRIEFING:
-                self._set_state(FeedbackState.IDLE)
+            if self._state != FeedbackState.BRIEFING:
+                return
+            self._set_state(FeedbackState.IDLE)
+        # Fora do lock (só fala) — o sinal explícito de "agora é sua vez"
+        # que fecha o par com BRIEFING_INTRO; entra na fila (não corta) por
+        # segurança, embora a fala do briefing já deva ter terminado aqui.
+        self.audio.speak_now(self.START_CUE, Severity.OK, interrupt=False)
 
     # ── Modo Configuração (calibração de enquadramento) ─────────────────────
 
@@ -296,6 +315,11 @@ class Session:
             self._pre_pause_state = self._state
             self._set_state(FeedbackState.PAUSED)
         self.audio.stop_all()
+        # 2026-09-24: Pausar/Retomar/Parar não diziam nada — quem não vê a tela não tinha
+        # como saber se o clique (ou comando de voz) realmente fez efeito. speak_now(...,
+        # interrupt=False) é o mesmo padrão já usado em respostas a uma ação da pessoa
+        # (ver "Enquadramento perfeito!" em _on_calibration_success).
+        self.audio.speak_now(self.PAUSE_CUE, Severity.OK, interrupt=False)
 
     def resume_exercise(self):
         """Retoma a análise a partir de um ciclo limpo (IDLE)."""
@@ -305,6 +329,7 @@ class Session:
             self._ok_frames       = 0
             self._reinforce_count = 0
             self._set_state(FeedbackState.IDLE)
+        self.audio.speak_now(self.RESUME_CUE, Severity.OK, interrupt=False)
 
     def stop_exercise(self):
         """Silencia tudo e volta ao estado mudo inicial — precisa clicar
@@ -316,6 +341,7 @@ class Session:
             self._reinforce_count = 0
             self._pending_exercise = None
         self.audio.stop_all()
+        self.audio.speak_now(self.STOP_CUE, Severity.OK, interrupt=False)
 
     def _begin_session_if_stopped(self):
         """Nova rodada (outra pessoa, ou a mesma recomeçando): quando o exercício COMEÇA de verdade (entra em

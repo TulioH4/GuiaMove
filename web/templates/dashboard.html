@@ -2238,16 +2238,25 @@ loadVoiceSettings();
   // frente). O Z monocular às vezes "dobra ao contrário" — o clamp impede
   // a hiperextensão visual em vez de mostrar o membro invertido.
   // bendSign: -1 = perna (canela.z <= coxa.z), +1 = braço (antebraço.z >= braço.z)
-  function solveLimb(upperBone, lowerBone, a, b, c, zk, bendSign, key) {
+  // `raised` (2026-09-24): tornozelo desta perna claramente mais alto que o do outro lado (mesmo
+  // princípio do portão do equilíbrio no servidor, ver ANKLE_LIFT_THRESHOLD em
+  // exercises/implementations.py) — achado num teste real com um aluno cego: ao levantar o pé
+  // dobrando o joelho (marcha), a canela NÃO dobra pra trás como num agachamento, e forçar isso
+  // renderizava a canela torta pro lado (artefato visual, membro fisicamente impossível). O caso
+  // de perna ESTICADA e levantada já tinha um tratamento (coxa/canela quase paralelas em 2D,
+  // abaixo); `raised` cobre também a perna DOBRADA levantada, onde coxa/canela não ficam paralelas.
+  function solveLimb(upperBone, lowerBone, a, b, c, zk, bendSign, key, raised = false) {
     const hasU = landmarkDir(_dU, a, b, zk, key + "U", +1);
     // canela: pra trás; antebraço: pra frente
     const hasL = landmarkDir(_dL, b, c, zk, key + "L", bendSign < 0 ? -1 : +1);
     if (hasU && hasL && bendSign < 0) {
       // Perna esticada e levantada: coxa e canela encurtadas na MESMA
       // direção 2D (quase paralelas) → a canela acompanha a coxa (também
-      // pra frente), em vez de dobrar o joelho ao contrário.
+      // pra frente), em vez de dobrar o joelho ao contrário. `raised` estende o mesmo
+      // tratamento pra perna DOBRADA levantada (sem exigir quase-paralelismo).
       const u = _seg2d[key + "U"], l = _seg2d[key + "L"];
-      if (u && l && u.r < 0.85 && l.r < 0.85 && (u.x * l.x + u.y * l.y) > 0.9) {
+      const parallel = u && l && u.r < 0.85 && l.r < 0.85 && (u.x * l.x + u.y * l.y) > 0.9;
+      if (u && l && (parallel || raised)) {
         _dL.z = Math.abs(l.z) * Math.sign(u.z || 1);
         _dL.normalize();
       }
@@ -2330,8 +2339,13 @@ loadVoiceSettings();
       }
     }
 
-    solveLimb(boneUpperLegL, boneLowerLegL, lh, lk, la, LEG_Z_DAMPING, -1, "legL");
-    solveLimb(boneUpperLegR, boneLowerLegR, rh, rk, ra, LEG_Z_DAMPING, -1, "legR");
+    // Sinal de "perna levantada" (ver nota de solveLimb) — só um sinal visual pro boneco, não é o
+    // mesmo cálculo do portão do servidor (nem precisa: aqui é só pra não travar a canela pra trás).
+    const ANKLE_RAISE_DELTA = 0.035;
+    const raisedL = !!(la && ra && (ra.y - la.y) > ANKLE_RAISE_DELTA);
+    const raisedR = !!(la && ra && (la.y - ra.y) > ANKLE_RAISE_DELTA);
+    solveLimb(boneUpperLegL, boneLowerLegL, lh, lk, la, LEG_Z_DAMPING, -1, "legL", raisedL);
+    solveLimb(boneUpperLegR, boneLowerLegR, rh, rk, ra, LEG_Z_DAMPING, -1, "legR", raisedR);
     solveLimb(boneUpperArmL, boneForearmL,  ls, le, lw, Z_DAMPING, +1, "armL");
     solveLimb(boneUpperArmR, boneForearmR,  rs, re, rw, Z_DAMPING, +1, "armR");
 

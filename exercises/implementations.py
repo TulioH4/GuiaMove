@@ -57,12 +57,15 @@ class SquatExercise(Exercise):
     # Instrução completa (posição, profundidade, ritmo e o que vem depois)
     # — ~50 palavras, cerca de 20s falado; Session.BRIEFING_TIMEOUT_S precisa
     # cobrir isso, senão a correção começa por cima do fim da explicação.
+    # 2026-09-24: tirado o "Faça uma repetição agora e eu digo se está certo" no meio da frase —
+    # num teste real (aluno cego) a pessoa ficava sem saber se já era pra agir, porque a explicação
+    # continuava depois desse "agora". O sinal de começar agora é o mesmo pra todo exercício, ver
+    # Session.BRIEFING_INTRO/START_CUE (fala antes e depois desta explicação).
     start_message = (
         "Agachamento. Fique de frente para a câmera, pés na largura dos "
-        "ombros. Dobre os joelhos devagar, como se fosse sentar numa "
-        "cadeira, contando até dois na descida. Desça até onde for "
-        "confortável e suba em mais dois tempos. Faça uma repetição agora "
-        f"e eu digo se está certo. Vamos fazer {target_reps} repetições."
+        f"ombros. Vamos fazer {target_reps} repetições. Dobre os joelhos "
+        "devagar, como se fosse sentar numa cadeira, contando até dois na "
+        "descida. Desça até onde for confortável e suba em mais dois tempos."
     )
     end_message   = "Agachamento concluído. Bom trabalho."
     description   = "Avalia joelhos, tronco e simetria durante a descida."
@@ -685,6 +688,17 @@ class UnipodialBalanceExercise(Exercise):
     equilibra numa perna normalmente NÃO sobe até a altura do quadril — só o TORNOZELO sobe bem
     (o pé sai do chão), o que os mesmos vídeos confirmam: diferença de altura entre os tornozelos
     chegando a 0,09–0,21 nas tentativas reais, contra ruído de ±0,01–0,02 de pé parado.
+
+    2026-09-24: mesmo com o critério acima, o portão falhou num teste real com um aluno cego —
+    a gravação mostra elevações claras e sustentadas (vários segundos) sem o portão confirmar.
+    Ver LEG_VIS_GRACE_S: a hipótese com mais evidência é o MediaPipe perdendo a visibilidade do
+    tornozelo por alguns quadros bem no meio do movimento (o mesmo efeito documentado em
+    core/kinect_tracker.py, _sanity_legs, que motivou o fix do "boneco estranho" no agachamento
+    em 2026-09-23) — cada perda momentânea zerava a confirmação do zero. Não dá pra confirmar
+    100% com a gravação de tela disponível (não é o mesmo feed bruto que o sistema analisou ao
+    vivo); a tolerância a queda breve de visibilidade é uma melhoria de robustez justificada por
+    esse mecanismo já conhecido, não uma certeza absoluta da causa raiz. Precisa validar de novo
+    com um teste real (Kinect físico ou webcam) pra confirmar que resolve.
     """
     name          = "Equilíbrio em uma perna"
     start_message = (
@@ -701,6 +715,16 @@ class UnipodialBalanceExercise(Exercise):
     # Precisa se manter acima do limiar por este tempo antes de abrir o portão — 1 quadro isolado
     # de ruído não basta; fechar continua sendo na hora, sem espera (o pé pode ter voltado ao chão).
     LEG_RAISE_CONFIRM_S   = 0.15
+    # 2026-09-24: teste real com um aluno cego — o portão nunca confirmava abertura mesmo com
+    # elevações claras e sustentadas (visíveis na gravação). O mesmo mecanismo já documentado em
+    # core/kinect_tracker.py (_sanity_legs) mostra que o MediaPipe perde o tornozelo por alguns
+    # quadros bem no meio de um movimento dinâmico da perna (oclusão/desfoque) — exatamente o
+    # instante em que _leg_raised() zerava _raise_since e recomeçava a confirmação do zero, sem
+    # nunca acumular LEG_RAISE_CONFIRM_S seguido. Essa tolerância deixa uma queda BREVE de
+    # visibilidade não derrubar uma elevação que já estava em andamento; se a visibilidade não
+    # voltar dentro da janela, some como antes (fechar continua sendo na hora quando o pé volta
+    # ao chão de verdade — isso não muda).
+    LEG_VIS_GRACE_S       = 0.3
     TRUNK_SWAY_WARN       = 10.0   # graus
     TRUNK_SWAY_ERROR      = 20.0
     HIP_DROP_WARN         = 5.0    # Trendelenburg
@@ -725,6 +749,10 @@ class UnipodialBalanceExercise(Exercise):
             PostureCheck("oscilacao_tronco", self._check_trunk_sway),
         ]
         self._raise_since: Optional[float] = None
+        # Último instante em que os dois tornozelos estavam visíveis E acima do limiar —
+        # usado só pra decidir se uma queda de visibilidade AGORA ainda está dentro da
+        # tolerância (LEG_VIS_GRACE_S) de uma elevação que já estava em andamento.
+        self._last_lifted_at: Optional[float] = None
 
     def analyze(self, frame: SkeletonFrame) -> FeedbackResult:
         return self.analyze_checks(frame, self._checks, gates=self._gates)
@@ -732,10 +760,27 @@ class UnipodialBalanceExercise(Exercise):
     def _leg_raised(self, frame: SkeletonFrame) -> bool:
         pts = frame.points
         la, ra = pts.get(L_ANKLE), pts.get(R_ANKLE)
-        if not (la and ra and la.visible and ra.visible) or abs(la.y - ra.y) <= self.ANKLE_LIFT_THRESHOLD:
-            self._raise_since = None
-            return False
         now = frame.timestamp
+        visible = bool(la and ra and la.visible and ra.visible)
+
+        if visible and abs(la.y - ra.y) <= self.ANKLE_LIFT_THRESHOLD:
+            # pé claramente no chão — fecha na hora, sem tolerância (perna abaixada de
+            # verdade nunca deve esperar LEG_VIS_GRACE_S pra contar).
+            self._raise_since = None
+            self._last_lifted_at = None
+            return False
+
+        if visible:
+            self._last_lifted_at = now
+        elif self._last_lifted_at is None or now - self._last_lifted_at > self.LEG_VIS_GRACE_S:
+            # tornozelo não confiável e (nunca esteve elevado) ou (a tolerância já
+            # estourou) — trata como perna não elevada, igual antes desta mudança.
+            self._raise_since = None
+            self._last_lifted_at = None
+            return False
+        # senão: tornozelo momentaneamente não confiável, mas dentro da tolerância de uma
+        # elevação recente — mantém _raise_since como estava, não reseta a confirmação.
+
         if self._raise_since is None:
             self._raise_since = now
         return now - self._raise_since >= self.LEG_RAISE_CONFIRM_S
